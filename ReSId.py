@@ -28,5 +28,10 @@ parser.add_option("-f", "--file", dest="filename",
 parser.add_option("-q", "--quiet",
                   action="store_false", dest="verbose", default=True,
                   help="don't print status messages to stdout")
+parser.add_option("-c", "--freq", 
+				  action="store",type="string",dest="central_freq")
+				  #,help="provide central frequency", metavar="FREQ")
 
 (options, args) = parser.parse_args()
+
+print options.central_freq

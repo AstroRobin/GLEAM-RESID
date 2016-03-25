@@ -48,7 +48,7 @@ def read_data(filename):
 	
 	return (in_data,column_ref)
 
-def extract_sources(in_data, RA, DEC, ang_diam):
+def extract_sources(in_data, ref, RA, DEC, ang_diam, freq):
 	"""
 	Find sources that are positioned with the dimensions of the image specified.
 	
@@ -57,7 +57,17 @@ def extract_sources(in_data, RA, DEC, ang_diam):
 	:param DEC: declination of the image
 	:param ang_diam: angular diameter of the image
 	"""
-		
+	sources_data = []
+	print RA, DEC
+	for ii in range(0,len(in_data)):
+		in_ra = float(in_data[ii][ref["RAJ2000"]]); in_dec = float(in_data[ii][ref["DECJ2000"]])
+		print in_ra, in_dec
+		if (in_ra >= (RA-1) and in_ra < (RA+1) and in_dec >= (DEC-1) and in_dec < (DEC+1)):
+			sources_data.append(in_data[ii])
+	
+	print len(sources_data)
+	
+	return sources_data
 	
 def main():
 	usage = "usage: %prog [options] filename.fits"
@@ -75,13 +85,13 @@ def main():
 					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\CDFS\\CDFS_sources.csv",
 					  help="destination of input table for sources",metavar="SOURCES_FILE")
 	parser.add_option("-r","--ra",
-					  action="store", dest="ra_map",default=None,
+					  action="store", type="float", dest="ra_map",default=None,
 					  help="right ascension of the image",metavar="RA")
 	parser.add_option("-d","--dec",
-					  action="store", dest="dec_map",default=None,
+					  action="store", type="float", dest="dec_map",default=None,
 					  help="declination of the image",metavar="DEC")
 	parser.add_option("-a","--angulardiameter",
-					  action="store", type="double", dest="ang_diameter",default=2.0,
+					  action="store", type="float", dest="ang_diameter",default=2.0,
 					  help="angular diameter of the sides of the image",metavar="ANGULAR_DIAMETER")
 	
 	
@@ -94,7 +104,7 @@ def main():
 	
 	(in_data, column_ref) = read_data(options.data_filename)
 	
-	extract_sources(in_data,options.RA,options.DEC,options.ang_dimaeter)
+	sources_data = extract_sources(in_data,column_ref,options.ra_map,options.dec_map,options.ang_diameter,options.central_freq)
 
 
 main()

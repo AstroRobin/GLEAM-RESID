@@ -18,6 +18,7 @@ import math
 # Other Imports
 import scipy
 import astropy
+import ntpath
 
 from optparse import OptionParser
 	
@@ -71,7 +72,7 @@ def extract_sources(in_data, ref, RA, DEC, ang_diam, freq):
 	
 	return sources_data
 	
-def to_Aegean_table(source_data, ref, c_freq, base_name):
+def to_Aegean_table(source_data, ref, c_freq, base_name, path):
 	"""
 	configures source data into a format that Aegean/AeRes can understand.
 	
@@ -79,9 +80,10 @@ def to_Aegean_table(source_data, ref, c_freq, base_name):
 	:param ref: reference dictionary for column names
 	:param c_freq: central frequency of the data
 	"param base_name: The base name for the output Aegean formatted table
+	"param path: The path only of the input filename
 	"""
 	
-	out_file = open(base_name+'.csv','w')
+	out_file = open(path+'\\'+base_name+'.csv','w')
 	out_file.write('island,source,background,local_rms,ra_str,dec_str,ra,err_ra,dec,err_dec,peak_flux,err_peak_flux,int_flux,err_int_flux,a,err_a,b,err_b,pa,err_pa,flags,residual_mean,residual_std,uuid,psf_a,psf_b,psf_pa\n')
 		
 	num_sources = len(source_data)
@@ -121,9 +123,6 @@ def to_Aegean_table(source_data, ref, c_freq, base_name):
 	out_file.close()
 	
 	
-	
-	
-	
 def main():
 	usage = "usage: %prog [options] filename.fits"
 	parser = OptionParser(usage=usage)
@@ -157,13 +156,20 @@ def main():
 	#				  action="", dest="",default=,
 	#				  help="")
 	
-
-	(options, args) = parser.parse_args()	
 	
+	(options, args) = parser.parse_args()	
+	head, tail = ntpath.split(options.data_filename)
+	
+	
+	# read data from input table
 	(in_data, column_ref) = read_data(options.data_filename)
 	
+	# Extract sources which are constrained by input RA/DEC and ang_diam
 	source_data = extract_sources(in_data,column_ref,options.ra_map,options.dec_map,options.ang_diameter,options.central_freq)
 	
-	to_Aegean_table(source_data,column_ref,options.central_freq,options.base_name)
-
+	# Convert source data to Aegean format table
+	to_Aegean_table(source_data,column_ref,options.central_freq,options.base_name,head)
+	
+	#os.system('"C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py"' + ' -c ' +  + ' -f ' +  + ' -r ' +)
+	
 main()

@@ -21,6 +21,41 @@ import astropy
 import ntpath
 
 from optparse import OptionParser
+
+def find_filename(filename):
+	"""
+	Find .fits file in directory.
+	
+	:return: The .fits filename and path
+	"""
+	
+	found_filenames = []
+	dirs = ['CDFS','ELAIS_S1','COSMOS']
+	for ii in range(0,len(dirs)):
+		dir_str = "C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\"+dirs[ii]
+		for dir_filename in os.listdir(dir_str):
+			if ".fits" in dir_filename:
+				if filename in dir_filename:
+					found_filenames.append(dirs[ii]+'\\'+dir_filename)	
+	if (len(found_filenames) == 1):
+		print " ** Found .fits file: ", found_filenames[0]
+		filename = '"C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\"' + found_filenames[0] + '"'
+	elif (len(found_filenames) > 1):
+		for kk in range(0,len(found_filenames)):
+			print kk+1, " - ",found_filenames[kk]
+			file_choice = "-1"
+		while (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
+			file_choice = input(">> Select file: ")
+			print int(file_choice)
+			if (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
+				print " ** invalid choice ** "
+		filename = '"C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[int(file_choice)-1] + '"'
+	else:
+		print " ** No .fits files found with name '", filename,"' **"
+		exit()
+		
+	return filename
+	
 	
 def read_data(filename):
 	"""
@@ -58,14 +93,38 @@ def extract_sources(in_data, ref, RA, DEC, ang_diam):
 	:param RA: right ascension of the image
 	:param DEC: declination of the image
 	:param ang_diam: angular diameter of the image
+	
+	:return: a table of sources which were found to lie within the specified coordinates
 	"""
 	sources_data = []
 	for ii in range(0,len(in_data)):
 		in_ra = float(in_data[ii][ref["RAJ2000"]]); in_dec = float(in_data[ii][ref["DECJ2000"]])
-		if (in_ra >= (RA-1.0) and in_ra < (RA+1.0) and in_dec >= (DEC-1.0) and in_dec < (DEC+1.0)):
+		if (in_ra >= (RA-0.5*ang_diam) and in_ra < (RA+0.5*ang_diam) and in_dec >= (DEC-0.5*ang_diam) and in_dec < (DEC+0.5*ang_diam)):
 			sources_data.append(in_data[ii])
-	
 	return sources_data
+	
+	print "num CDFS sources: ", len(in_data), ", num sources found: ", len(source_data)
+	
+	
+def calc_peak_flux (a,b,psf_a,psf_b,int_flux,err_int_flux):
+	"""
+	Calculates th peak flux of the source using the equation: peak_flux = int_flux x (psf_a x psf_b)/(a x b) 
+	
+	:param a: source FWHM semi-major axis
+	:param b: source FWHM semi-minor axis
+	:param psf_a: synthesized beam FWHM semi-major axis
+	:param psf_a: synthesized beam FWHM semi-major axis
+	:param int_flux: integrated flux of the source
+	:param err_int_flux: error in the integrated flux of the source
+	
+	:return: peak_flux and err_peak_flux
+	"""
+	
+	peak_flux = ((psf_a*psf_b)/(a*b))*int_flux
+	err_peak_flux = (peak_flux/int_flux)*err_int_flux
+	
+	return [peak_flux, err_peak_flux]
+	
 	
 def to_Aegean_table(source_data, ref, c_freq, base_name, path):
 	"""
@@ -91,10 +150,12 @@ def to_Aegean_table(source_data, ref, c_freq, base_name, path):
 		for jj in range(ref['ra_str'],ref['err_DECJ2000']+1): # columns encompassing RA and DEC information
 			out_file.write(str(source_data[ii][jj])+',')
 		
-		# Take int_flux <=> peak_flux
-		out_file.write(str(source_data[ii][ref['int_flux_'+c_freq]])+','+str(source_data[ii][ref['err_fit_flux_'+c_freq]])+',') #peak_flux + err
-		out_file.write(str(source_data[ii][ref['int_flux_'+c_freq]])+','+str(source_data[ii][ref['err_fit_flux_'+c_freq]])+',') #int_flux + err
-	
+		(peak_flux, err_peak_flux) = calc_peak_flux(float(source_data[ii][ref['a_'+c_freq]]),float(source_data[ii][ref['b_'+c_freq]]),float(source_data[ii][ref['psf_a_'+c_freq]]), float(source_data[ii][ref['psf_b_'+c_freq]]),float(source_data[ii][ref['int_flux_'+c_freq]]),float(source_data[ii][ref['err_fit_flux_'+c_freq]]))
+		
+		# print "S_peak = ", peak_flux," +/- ",err_peak_flux," | S_int = ", source_data[ii][ref['int_flux_'+c_freq]]," +/- ", source_data[ii][ref['err_fit_flux_'+c_freq]]," ( ", (peak_flux/float(source_data[ii][ref['int_flux_'+c_freq]]))," )"
+		out_file.write(str(peak_flux)+','+str(err_peak_flux)+',') #peak_flux + err_peak_flux
+		out_file.write(str(source_data[ii][ref['int_flux_'+c_freq]])+','+str(source_data[ii][ref['err_fit_flux_'+c_freq]])+',') #int_flux + err_int_flux 
+		
 		# write Gaussian parameters
 		out_file.write(str(source_data[ii][ref['a_'+c_freq]])+','+'0.00'+',') # a + err
 		out_file.write(str(source_data[ii][ref['b_'+c_freq]])+','+'0.00'+',') # b + err
@@ -129,17 +190,17 @@ def run_AeRes(path, base, fits_filename, c_freq):
 	:param c_freq: the central frequency.
 	"""
 	
-	if fits_filename == None:
-		fits_filename = input(">> Enter .fits file name: ")
-	
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+path+'\\'+base+'_'+c_freq+'_sources.csv'+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+path+'\\'+base+'_'+c_freq+'_residual.fits'+'"')
-	
+
 def main():
 	usage = "usage: %prog [options] filename.fits"
 	parser = OptionParser(usage=usage)
 	parser.add_option("-f", "--fitsfile", 
 					  action="store",type="string",dest="fits_filename",default=None,
 					  help=".fits file name", metavar="FITS_FILE")
+	parser.add_option("-g","--galaxy",
+					  action="store", type="string", dest="galaxy_name",default=None,
+					  help="The name of the Dwarf galaxy",metavar="GALAXY_NAME")
 	parser.add_option("-q", "--quiet",
 					  action="store_false", dest="verbose", default=True,
 					  help="don't print status messages to stdout")
@@ -172,6 +233,19 @@ def main():
 	(options, args) = parser.parse_args()	
 	head, tail = ntpath.split(options.data_filename)
 	
+	if (options.galaxy_name != None):
+		galaxy = options.galaxy_name.replace(' ','_').replace('(','').replace(')','')
+		fits_filename = '"C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\' + options.galaxy_name + '"'
+	else:
+		if (options.fits_filename != None):
+			fits_filename = options.fits_filename
+		else:
+			fits_filename = input(' >> Search for .fits file: ')
+			
+		fits_filename = find_filename(fits_filename)
+	
+	print fits_filename
+	exit()
 	
 	# read data from input table
 	(in_data, column_ref) = read_data(options.data_filename)

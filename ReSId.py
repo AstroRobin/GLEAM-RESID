@@ -95,7 +95,7 @@ def find_gal_filename(filename):
 	
 	
 	
-def read_data(filename, RA, DEC, ang_diam, path):
+def read_data(filename, RA, DEC, ang_diam, head):
 	"""
 	Read data from file.
 	Take input data of sources and convert to a table
@@ -108,18 +108,18 @@ def read_data(filename, RA, DEC, ang_diam, path):
 	:param RA: right ascension of the map
 	:param DEC: declination of the map
 	:param ang_diam: angular diameter of the fits image
-	:param path: path for where to search for pre existing data tables
+	:param head: path for where to search for pre existing data tables
 	:return: The data given from the input table in an astropy Table
 	"""
 	
 	catch = False
 	# Searching for filenames of form "GLEAM_chunk_{RA}_{DEC}_{ang_diam}.fits" and encompass input position.
-	for search_filename in os.listdir(head+'"'):
+	for search_filename in os.listdir(head.replace('"','')):
 		if (catch == True):
 			break
 		if ('.fits' in search_filename and 'GLEAM_chunk' in search_filename):	
-			(RA_file,DEC_file,ang_diam_file) = search_filename.replace('.fits','').split('_')[1:4]
-			RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam = float(ang_diam)
+			(RA_file,DEC_file,ang_diam_file) = search_filename.replace('.fits','').split('_')[2:5]
+			RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam_file = float(ang_diam_file)
 			if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file):
 				print "  ** Found pre-existing data file: ", search_filename, " **"
 				print "  - RA: ", RA_file, "\n  - DEC: ", DEC_file, "\n  - Angular diameter: ", ang_diam_file
@@ -128,7 +128,7 @@ def read_data(filename, RA, DEC, ang_diam, path):
 				while (choice != 'y' and choice != 'n' and choice != 'Y' and choice != 'N'):
 					choice = input(">> (y/n)?: ")
 					if (choice == 'y' or choice == 'Y'):
-						filename = head + search_filename + '"'
+						filename = head + "\\" + search_filename + '"'
 						catch = True
 					elif (choice == 'n' or choice == 'N'):
 						print " ** Searching for other files ** "
@@ -138,28 +138,11 @@ def read_data(filename, RA, DEC, ang_diam, path):
 		print " ** No files pre-existing with appropriate position parameters ** "
 		
 	
-	print filename
-	
-	exit()
+	print " ** Using input fits file: **\n "filename
 	
 	in_data = Table.read(filename)
-	exit()
 	
 	return in_data
-	
-	file = open(filename,'r')
-	column_names = file.readline().replace('\n','').split(','); num_columns = len(column_names); #*print column_names
-	lines = file.readlines()
-
-	in_data = []
-	for ii in range(0,len(lines)):
-		in_data.append(lines[ii].replace('\n','').split(','))
-	
-	column_ref = {};
-	for ii in range(0,num_columns):
-		column_ref[column_names[ii]] = ii
-	
-	return (in_data,column_ref)
 	
 
 def extract_sources(data, RA, DEC, ang_diam):
@@ -167,7 +150,6 @@ def extract_sources(data, RA, DEC, ang_diam):
 	Find sources that are positioned with the dimensions of the image specified.
 	
 	:param in_data: data of all sources
-	:param ref: reference dictionary for column names #edit
 	:param RA: right ascension of the image
 	:param DEC: declination of the image
 	:param ang_diam: angular diameter of the image
@@ -352,10 +334,10 @@ def main():
 	head, tail = ntpath.split(fits_filename)
 	
 	# read data from input table
-	in_data = read_data(options.data_filename,options.ra_map,options.dec_map,options.ang_diameter,head)
+	in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
 	# Extract sources which are constrained by input RA/DEC and ang_diam
-	source_data = extract_sources(in_data,column_ref,options.ra_map,options.dec_map,options.ang_diameter)
+	source_data = extract_sources(in_data,options.ra_map,options.dec_map,options.ang_diameter)
 	
 	# Convert source data to Aegean format table
 	if (options.base_name == None):

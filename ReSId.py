@@ -145,6 +145,8 @@ def read_data(filename, RA, DEC, ang_diam, path):
 	in_data = Table.read(filename)
 	exit()
 	
+	return in_data
+	
 	file = open(filename,'r')
 	column_names = file.readline().replace('\n','').split(','); num_columns = len(column_names); #*print column_names
 	lines = file.readlines()
@@ -221,18 +223,17 @@ def calc_peak_flux (a,b,psf_a,psf_b,int_flux,err_int_flux):
 	return [peak_flux, err_peak_flux]
 	
 	
-def to_Aegean_table(in_data, ref, c_freq, base_name,path):
+def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	"""
 	configures source data into a format that Aegean/AeRes can understand.
 	
 	:param source_data: data arrays for sources constrained by RA and DEC values.
-	:param ref: reference dictionary for column names
 	:param c_freq: central frequency of the data
-	"param base_name: The base name for the output Aegean formatted table
+	:param RA: right ascension of the image
+	:param DEC: declination of the image
+	:param ang_diam: angular diameter of the image
+	"param head: The path for the data 'snippet'; i.e. the Aegean formatted single frequency column table of the in_data
 	"""
-	
-	#out_file = open(path+'\\'+base_name+'_'+c_freq+'_sources.csv','w')
-	#out_file.write('island,source,background,local_rms,ra_str,dec_str,ra,err_ra,dec,err_dec,peak_flux,err_peak_flux,int_flux,err_int_flux,a,err_a,b,err_b,pa,err_pa,flags,residual_mean,residual_std,uuid,psf_a,psf_b,psf_pa\n')
 	
 	num_sources = len(source_data)
 	out_data = Table()
@@ -278,7 +279,8 @@ def to_Aegean_table(in_data, ref, c_freq, base_name,path):
 	out_data['psf_b'] = in_data['psf_b_'+c_freq]
 	out_data['psf_pa'] = in_data['psf_pa_'+c_freq]
 	
-	out_data.write(head+'\\'+base+'_resid.fits')
+	# edit this output name to something appropriate
+	out_data.write(head+'\\'+'gleam_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+c_freq+'.fits"')
 	
 def run_AeRes(path, base, fits_filename, c_freq):
 	"""

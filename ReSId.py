@@ -95,7 +95,7 @@ def find_gal_filename(filename):
 	
 	
 	
-def read_data(filename, path):
+def read_data(filename, RA, DEC, ang_diam, path):
 	"""
 	Read data from file.
 	Take input data of sources and convert to a table
@@ -105,10 +105,46 @@ def read_data(filename, path):
 	dict format: {0:Names,1:Background_deep,...,34:int_flux_84,...,n_columns}
 	
 	:param filename: name of the input filename
-	:param path: path for where to search for pre existing tables
+	:param RA: right ascension of the map
+	:param DEC: declination of the map
+	:param ang_diam: angular diameter of the fits image
+	:param path: path for where to search for pre existing data tables
 	:return: The data given from the input table in an astropy Table
 	"""
-
+	
+	catch = False
+	# Searching for filenames of form "GLEAM_chunk_{RA}_{DEC}_{ang_diam}.fits" and encompass input position.
+	for search_filename in os.listdir(head+'"'):
+		if (catch == True):
+			break
+		if ('.fits' in search_filename and 'GLEAM_chunk' in search_filename):	
+			(RA_file,DEC_file,ang_diam_file) = search_filename.replace('.fits','').split('_')[1:4]
+			RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam = float(ang_diam)
+			if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file):
+				print "  ** Found pre-existing data file: ", search_filename, " **"
+				print "  - RA: ", RA_file, "\n  - DEC: ", DEC_file, "\n  - Angular diameter: ", ang_diam_file
+				print "\n       Use this file? "
+				choice = '' # enter while loop
+				while (choice != 'y' and choice != 'n' and choice != 'Y' and choice != 'N'):
+					choice = input(">> (y/n)?: ")
+					if (choice == 'y' or choice == 'Y'):
+						filename = head + search_filename + '"'
+						catch = True
+					elif (choice == 'n' or choice == 'N'):
+						print " ** Searching for other files ** "
+					else:
+						print " ** invalid choice ** "
+	if (catch == False):
+		print " ** No files pre-existing with appropriate position parameters ** "
+		
+	
+	print filename
+	
+	exit()
+	
+	in_data = Table.read(filename)
+	exit()
+	
 	file = open(filename,'r')
 	column_names = file.readline().replace('\n','').split(','); num_columns = len(column_names); #*print column_names
 	lines = file.readlines()
@@ -122,6 +158,7 @@ def read_data(filename, path):
 		column_ref[column_names[ii]] = ii
 	
 	return (in_data,column_ref)
+	
 
 def extract_sources(data, RA, DEC, ang_diam):
 	"""
@@ -295,8 +332,11 @@ def main():
 	
 	(options, args) = parser.parse_args()	
 	
+	if (options.galaxy_name != None and options.fits_filename != None):
+		print " ** -g (--galaxy) and -f (--fitsfile) have been specified **\n   -- ABORTING --   "
+		exit()
+	
 	if (options.galaxy_name != None):
-		# this will not work
 		fits_filename = find_gal_filename(options.galaxy_name)	
 	else:
 		if (options.fits_filename != None):
@@ -309,10 +349,9 @@ def main():
 	
 	head, tail = ntpath.split(fits_filename)
 	
-	
 	# read data from input table
-	in_data = Table.read(options.data_filename)
-	exit()
+	in_data = read_data(options.data_filename,options.ra_map,options.dec_map,options.ang_diameter,head)
+	
 	# Extract sources which are constrained by input RA/DEC and ang_diam
 	source_data = extract_sources(in_data,column_ref,options.ra_map,options.dec_map,options.ang_diameter)
 	
@@ -321,7 +360,7 @@ def main():
 		base = tail.replace('"','').replace('.fits','')
 	else:
 		base = options.base_name
-		
+	
 	to_Aegean_table(source_data,options.central_freq,base,head)
 	
 	run_AeRes(head, base, fits_filename, options.central_freq)

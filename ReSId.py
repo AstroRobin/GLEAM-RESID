@@ -27,23 +27,23 @@ def find_filename(filename):
 	"""
 	Find .fits file in directory.
 	
-	:param filename: name of the file being searched for
+	:param filename: The name of the fits file to be searched for
 	
-	:return: The .fits filename and path
+	:return: The .fits file name and path
 	"""
+	#if (verbose) 
 	
 	found_filenames = []
-	
 	dirs = ['CDFS','ELAIS_S1','COSMOS']
 	for ii in range(0,len(dirs)):
-		dir_str = "C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\"+dirs[ii]
+		dir_str = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\'+dirs[ii]
 		for dir_filename in os.listdir(dir_str):
 			if ".fits" in dir_filename:
 				if filename in dir_filename:
 					found_filenames.append(dirs[ii]+'\\'+dir_filename)	
 	if (len(found_filenames) == 1):
 		print " ** Found .fits file: ", found_filenames[0], " **"
-		filename = '"C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\"' + found_filenames[0] + '"'
+		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[0]
 	elif (len(found_filenames) > 1):
 		for kk in range(0,len(found_filenames)):
 			print kk+1, " - ",found_filenames[kk]
@@ -53,7 +53,7 @@ def find_filename(filename):
 			print int(file_choice)
 			if (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
 				print " ** invalid choice ** "
-		filename = '"C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[int(file_choice)-1] + '"'
+		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[int(file_choice)-1]
 	else:
 		print " ** No .fits files found with name '", filename,"' **\n   -- ABORTING --   "
 		exit()
@@ -64,19 +64,21 @@ def find_gal_filename(filename):
 	"""
 	Find .fits file in directory for a dwarf galaxy
 	
+	:param filename: The name of the fits file to be searched for
+	
 	:return: The .fits file name and path
 	"""
 	
 	
 	found_filenames = []
-	dir_str = "C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images"
+	dir_str = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images'
 	gal_dirs = os.listdir(dir_str)
 	for dir_filename in gal_dirs:
 		if (filename in dir_filename):
 			found_filenames.append(dir_filename)
 	if (len(found_filenames) == 1):
 		print " ** Found .fits file: ", found_filenames[0], " **"
-		filename = '"C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[0]+'\\'+found_filenames[0]+'.fits"'
+		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[0]+'\\'+found_filenames[0]+'.fits'
 	elif (len(found_filenames) > 1):
 		for kk in range(0,len(found_filenames)):
 			print kk+1, " - ",found_filenames[kk]
@@ -86,7 +88,7 @@ def find_gal_filename(filename):
 			print int(file_choice)
 			if (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
 				print " ** invalid choice ** "
-		filename = '"C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[int(file_choice)-1]+'\\'+found_filenames[int(file_choice)-1]+'.fits"'
+		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[int(file_choice)-1]+'\\'+found_filenames[int(file_choice)-1]+'.fits'
 	else:
 		print " ** No .fits files found with name '", filename,"' **\n   -- ABORTING --   "
 		exit()
@@ -109,12 +111,13 @@ def read_data(filename, RA, DEC, ang_diam, head):
 	:param DEC: declination of the map
 	:param ang_diam: angular diameter of the fits image
 	:param head: path for where to search for pre existing data tables
+	
 	:return: The data given from the input table in an astropy Table
 	"""
 	
 	catch = False
 	# Searching for filenames of form "GLEAM_chunk_{RA}_{DEC}_{ang_diam}.fits" and encompass input position.
-	for search_filename in os.listdir(head.replace('"','')):
+	for search_filename in os.listdir(head):
 		if (catch == True):
 			break
 		if ('.fits' in search_filename and 'GLEAM_chunk' in search_filename):	
@@ -128,24 +131,22 @@ def read_data(filename, RA, DEC, ang_diam, head):
 				while (choice != 'y' and choice != 'n' and choice != 'Y' and choice != 'N'):
 					choice = input(">> (y/n)?: ")
 					if (choice == 'y' or choice == 'Y'):
-						filename = head + "\\" + search_filename + '"'
+						filename = head + "\\" + search_filename
 						catch = True
 					elif (choice == 'n' or choice == 'N'):
 						print " ** Searching for other files ** "
 					else:
 						print " ** invalid choice ** "
 	if (catch == False):
-		print " ** No files pre-existing with appropriate position parameters ** "
+		print " ** No files pre-existing with appropriate positional parameters ** "
 		
-	
-	print " ** Using input fits file: **\n "filename
-	
+	print "\n ** Using input data file: **\n ", filename
 	in_data = Table.read(filename)
 	
 	return in_data
 	
 
-def extract_sources(data, RA, DEC, ang_diam):
+def extract_sources(data, RA, DEC, ang_diam, head):
 	"""
 	Find sources that are positioned with the dimensions of the image specified.
 	
@@ -153,6 +154,7 @@ def extract_sources(data, RA, DEC, ang_diam):
 	:param RA: right ascension of the image
 	:param DEC: declination of the image
 	:param ang_diam: angular diameter of the image
+	:param head: path to destination folder
 	
 	:return: a table of sources which were found to lie within the specified coordinates
 	"""
@@ -170,7 +172,7 @@ def extract_sources(data, RA, DEC, ang_diam):
 	
 	ang_diam = ang_diam*math.sqrt(2)
 	
-	for ii in range(0,len(data_table)):
+	for ii in range(0,len(data)):
 		if (data[ii]['RAJ2000'] >= RA - 0.5*ang_diam and data[ii]['RAJ2000'] <= RA + 0.5*ang_diam and data[ii]['DECJ2000'] >= DEC - 0.5*ang_diam and data[ii]['DECJ2000'] <= DEC + 0.5*ang_diam):
 			source_data.add_row(data[ii])
 	
@@ -181,8 +183,11 @@ def extract_sources(data, RA, DEC, ang_diam):
 	#		sources_data.append(in_data[ii])
 	#return sources_data
 	
-	print " ** Position bounds: \n   - RA: ",RA - 0.5*ang_diam," -> ",RA + 0.5*ang_diam," \n   - DEC: ",DEC - 0.5*ang_diam," -> ",DEC - 0.5*ang_diam, "\n  ** Number of sources sources found: ", len(source_data)
+	print "\n  ** Position bounds: \n   - RA: ",RA - 0.5*ang_diam," -> ",RA + 0.5*ang_diam," \n   - DEC: ",DEC - 0.5*ang_diam," -> ",DEC - 0.5*ang_diam, "\n  ** Number of sources sources found: ", len(source_data)
 	
+	filename = "GLEAM_chunk_"+str(RA)+"_"+str(DEC)+"_"+str(ang_diam)+".fits"
+	print "  ** Writing to file: **\n ", filename
+	source_data.write(head+"\\"+filename)
 	return source_data
 	
 def calc_peak_flux (a,b,psf_a,psf_b,int_flux,err_int_flux):
@@ -262,7 +267,7 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	out_data['psf_pa'] = in_data['psf_pa_'+c_freq]
 	
 	# edit this output name to something appropriate
-	out_data.write(head+'\\'+'gleam_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+c_freq+'.fits"')
+	out_data.write(head+'\\'+'gleam_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+c_freq+'.fits')
 	
 def run_AeRes(path, base, fits_filename, c_freq):
 	"""
@@ -288,6 +293,9 @@ def main():
 	parser.add_option("-q", "--quiet",
 					  action="store_false", dest="verbose", default=True,
 					  help="don't print status messages to stdout")
+	parser.add_option("-v","--verbose",
+					  action="store_true", dest="verbose",default=False,
+					  help="print status messages to stdout")
 	parser.add_option("-c", "--centralfreq", 
 					  action="store",type="string",dest="central_freq",
 					  help="provide central frequency", metavar="FREQUENCY")
@@ -337,7 +345,8 @@ def main():
 	in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
 	# Extract sources which are constrained by input RA/DEC and ang_diam
-	source_data = extract_sources(in_data,options.ra_map,options.dec_map,options.ang_diameter)
+	source_data = extract_sources(in_data,options.ra_map,options.dec_map,options.ang_diameter,head)
+	exit()
 	
 	# Convert source data to Aegean format table
 	if (options.base_name == None):

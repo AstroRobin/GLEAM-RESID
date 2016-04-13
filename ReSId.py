@@ -31,7 +31,7 @@ def find_filename(filename):
 	
 	:return: The .fits file name and path
 	"""
-	#if (verbose) 
+	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '"+filename+"' **"
 	
 	found_filenames = []
 	dirs = ['CDFS','ELAIS_S1','COSMOS']
@@ -40,17 +40,17 @@ def find_filename(filename):
 		for dir_filename in os.listdir(dir_str):
 			if ".fits" in dir_filename:
 				if filename in dir_filename:
-					found_filenames.append(dirs[ii]+'\\'+dir_filename)	
+					found_filenames.append(dirs[ii]+'\\'+dir_filename)
 	if (len(found_filenames) == 1):
 		print " ** Found .fits file: ", found_filenames[0], " **"
 		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[0]
 	elif (len(found_filenames) > 1):
+		print "  ** .fits files found: ** "
 		for kk in range(0,len(found_filenames)):
-			print kk+1, " - ",found_filenames[kk]
+			print " ", kk+1, " - ",found_filenames[kk]
 			file_choice = "-1"
 		while (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
 			file_choice = input(">> Select file: ")
-			print int(file_choice)
 			if (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
 				print " ** invalid choice ** "
 		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[int(file_choice)-1]
@@ -68,8 +68,8 @@ def find_gal_filename(filename):
 	
 	:return: The .fits file name and path
 	"""
-	
-	
+	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '"+filename+"' **"
+
 	found_filenames = []
 	dir_str = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images'
 	gal_dirs = os.listdir(dir_str)
@@ -77,15 +77,15 @@ def find_gal_filename(filename):
 		if (filename in dir_filename):
 			found_filenames.append(dir_filename)
 	if (len(found_filenames) == 1):
-		print " ** Found .fits file: ", found_filenames[0], " **"
+		print "  ** Found .fits file: ", found_filenames[0], " **"
 		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[0]+'\\'+found_filenames[0]+'.fits'
 	elif (len(found_filenames) > 1):
+		print "  ** .fits files found: ** "
 		for kk in range(0,len(found_filenames)):
-			print kk+1, " - ",found_filenames[kk]
-			file_choice = "-1"
+			print " ", kk+1, " - ",found_filenames[kk]
+		file_choice = "-1"
 		while (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
 			file_choice = input(">> Select file: ")
-			print int(file_choice)
 			if (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
 				print " ** invalid choice ** "
 		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[int(file_choice)-1]+'\\'+found_filenames[int(file_choice)-1]+'.fits'
@@ -176,7 +176,7 @@ def extract_sources(data, RA, DEC, ang_diam, head):
 		if (data[ii]['RAJ2000'] >= RA - 0.5*ang_diam_buff and data[ii]['RAJ2000'] <= RA + 0.5*ang_diam_buff and data[ii]['DECJ2000'] >= DEC - 0.5*ang_diam_buff and data[ii]['DECJ2000'] <= DEC + 0.5*ang_diam_buff):
 			source_data.add_row(data[ii])
 
-	print "\n  ** Position bounds: \n      - RA: ",RA - 0.5*ang_diam_buff," -> ",RA + 0.5*ang_diam_buff," \n      - DEC: ",DEC - 0.5*ang_diam_buff," -> ",DEC - 0.5*ang_diam_buff, "\n  ** Number of sources sources found: ", len(source_data)
+	print "\n  ** Position bounds: \n      - RA: ",RA - 0.5*ang_diam_buff," -> ",RA + 0.5*ang_diam_buff," \n      - DEC: ",DEC - 0.5*ang_diam_buff," -> ",DEC + 0.5*ang_diam_buff, "\n  ** Number of sources sources found: ", len(source_data)
 	
 	catch = False
 	filename = "GLEAM_chunk_"+str(RA)+"_"+str(DEC)+"_"+str(ang_diam)+".fits"
@@ -324,6 +324,7 @@ def main():
 	
 	
 	(options, args) = parser.parse_args()	
+	global verbose; verbose = options.verbose
 	
 	if (options.galaxy_name != None and options.fits_filename != None):
 		print " ** -g (--galaxy) and -f (--fitsfile) have been specified **\n   -- ABORTING --   "
@@ -337,10 +338,9 @@ def main():
 		else:
 			fits_filename = input(' >> Search for .fits file: ')
 		fits_filename = find_filename(fits_filename)
-	
-	print fits_filename
-	
+
 	head, tail = ntpath.split(fits_filename)
+	if (verbose): print " **\n Using .fits file name: '.../"+tail+"' ** "
 	
 	# read data from input table
 	in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)

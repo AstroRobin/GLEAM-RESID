@@ -95,8 +95,7 @@ def find_gal_filename(filename):
 		
 	return filename
 	
-	
-	
+
 def read_data(filename, RA, DEC, ang_diam, head):
 	"""
 	Read data from file.
@@ -124,8 +123,8 @@ def read_data(filename, RA, DEC, ang_diam, head):
 			(RA_file,DEC_file,ang_diam_file) = search_filename.replace('.fits','').split('_')[2:5]
 			RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam_file = float(ang_diam_file)
 			if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file):
-				print "  ** Found pre-existing data file: ", search_filename, " **"
-				print "  - RA: ", RA_file, "\n  - DEC: ", DEC_file, "\n  - Angular diameter: ", ang_diam_file
+				print "\n  ** Found pre-existing data file: ", search_filename, " **"
+				print "     - RA: ", RA_file, "\n     - DEC: ", DEC_file, "\n     - Angular diameter: ", ang_diam_file
 				print "\n       Use this file? "
 				choice = '' # enter while loop
 				while (choice != 'y' and choice != 'n' and choice != 'Y' and choice != 'N'):
@@ -223,7 +222,7 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	"param head: The path for the data 'snippet'; i.e. the Aegean formatted single frequency column table of the in_data
 	"""
 	
-	num_sources = len(source_data)
+	num_sources = len(in_data)
 	out_data = Table()
 	
 	# Aegean requirement information
@@ -241,7 +240,7 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	
 	# Peak and integrated flux data
 	peak_flux_arr = [0]*num_sources; err_peak_flux_arr = [0]*num_sources
-	for ii in range(0,num_source):
+	for ii in range(0,num_sources):
 		(peak_flux_arr[ii], err_peak_flux_arr[ii]) = calc_peak_flux(in_data['a_'+c_freq][ii],in_data['b_'+c_freq][ii],in_data['psf_a_'+c_freq][ii],in_data['psf_b_'+c_freq][ii],in_data['int_flux_'+c_freq][ii],in_data['err_fit_flux_'+c_freq][ii])
 	out_data['peak_flux'] = peak_flux_arr
 	out_data['err_peak_flux'] = err_peak_flux_arr
@@ -249,8 +248,12 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	out_data['err_int_flux'] = in_data['err_fit_flux_'+c_freq]
 	
 	# Source shape information
-	for ii in ['a','err_a','b','err_b','pa','err_pa']:
-		out_data[ii] = in_data[ii+'_'+c_freq]
+	out_data['a'] = in_data['a_'+c_freq]
+	out_data['err_a'] = 0.0 # no a_err given in GLEAMIDR3.fits
+	out_data['b'] = in_data['b_'+c_freq]
+	out_data['err_b'] = 0.0 # no b_err given in GLEAMIDR3.fits
+	out_data['pa'] = in_data['pa_'+c_freq]
+	out_data['err_pa'] = 0.0 # no pa_err given in GLEAMIDR3.fits
 	
 	# Flags information
 	out_data['flags'] = in_data['flags_deep']
@@ -260,7 +263,7 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	out_data['residual_std'] = in_data['residual_std_'+c_freq]
 	
 	# uuid information
-	out_data['uuid'] = [None]*num_sources
+	out_data['uuid'] = ['None']*num_sources
 	
 	# psf information
 	out_data['psf_a'] = in_data['psf_a_'+c_freq]
@@ -268,7 +271,11 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	out_data['psf_pa'] = in_data['psf_pa_'+c_freq]
 	
 	# edit this output name to something appropriate
-	out_data.write(head+'\\'+'gleam_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+c_freq+'.fits')
+	filename = head+"\\"+"GLEAM_snippet_"+str(RA)+"_"+str(DEC)+"_"+str(ang_diam)+'_'+c_freq+'.fits'
+	print  filename
+	out_data.write(filename,format='fits')
+	
+	print "\n\n Ding \n\n"
 	
 def run_AeRes(path, base, fits_filename, c_freq):
 	"""
@@ -340,14 +347,13 @@ def main():
 		fits_filename = find_filename(fits_filename)
 
 	head, tail = ntpath.split(fits_filename)
-	if (verbose): print " **\n Using .fits file name: '.../"+tail+"' ** "
+	if (verbose): print "\n  ** Using .fits file name: '.../"+tail+"' ** "
 	
 	# read data from input table
 	in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
 	# Extract sources which are constrained by input RA/DEC and ang_diam
 	source_data = extract_sources(in_data,options.ra_map,options.dec_map,options.ang_diameter,head)
-	exit()
 	
 	# Convert source data to Aegean format table
 	if (options.base_name == None):
@@ -355,8 +361,9 @@ def main():
 	else:
 		base = options.base_name
 	
-	to_Aegean_table(source_data,options.central_freq,base,head)
+	to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
 	
+	exit()
 	run_AeRes(head, base, fits_filename, options.central_freq)
 	
 main()

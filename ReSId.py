@@ -23,6 +23,8 @@ import ntpath
 
 from optparse import OptionParser
 
+from progressbar import ProgressBar, Bar, Percentage
+
 def find_filename(filename):
 	"""
 	Find .fits file in directory.
@@ -113,6 +115,7 @@ def read_data(filename, RA, DEC, ang_diam, head):
 	
 	:return: The data given from the input table in an astropy Table
 	"""
+	if (verbose): print "\n <Reading in data> \n  ** Searching for pre-existing data file **"
 	
 	catch = False
 	# Searching for filenames of form "GLEAM_chunk_{RA}_{DEC}_{ang_diam}.fits" and encompass input position.
@@ -139,7 +142,7 @@ def read_data(filename, RA, DEC, ang_diam, head):
 	if (catch == False):
 		print " ** No files pre-existing with appropriate positional parameters ** "
 		
-	print "\n ** Using input data file: **\n ", filename
+	if verbose: print "\n  ** Using input data file: **\n "+ filename
 	in_data = Table.read(filename)
 	
 	return in_data
@@ -158,6 +161,7 @@ def extract_sources(data, RA, DEC, ang_diam, head):
 	:return: a table of sources which were found to lie within the specified coordinates
 	"""
 	
+	
 	dt = []
 	for ii in data.colnames:
 		if ('Name' in ii or '_str' in ii):
@@ -170,11 +174,17 @@ def extract_sources(data, RA, DEC, ang_diam, head):
 	source_data = Table(names=(data.colnames),dtype=dt)
 	
 	ang_diam_buff = ang_diam*math.sqrt(2)
+	num_sources = len(data)
 	
-	for ii in range(0,len(data)):
+	found_sources = 0
+	pbar = ProgressBar(widgets=['  ** Extracting sources: ', Percentage(), ' ', Bar(), ' ** '],maxval=num_sources).start()
+	for ii in range(0,num_sources):
+		pbar.update(ii+1)
 		if (data[ii]['RAJ2000'] >= RA - 0.5*ang_diam_buff and data[ii]['RAJ2000'] <= RA + 0.5*ang_diam_buff and data[ii]['DECJ2000'] >= DEC - 0.5*ang_diam_buff and data[ii]['DECJ2000'] <= DEC + 0.5*ang_diam_buff):
 			source_data.add_row(data[ii])
-
+			found_sources += 1
+	pbar.finish()
+	
 	print "\n  ** Position bounds: \n      - RA: ",RA - 0.5*ang_diam_buff," -> ",RA + 0.5*ang_diam_buff," \n      - DEC: ",DEC - 0.5*ang_diam_buff," -> ",DEC + 0.5*ang_diam_buff, "\n  ** Number of sources sources found: ", len(source_data)
 	
 	catch = False
@@ -274,8 +284,7 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	filename = head+"\\"+"GLEAM_snippet_"+str(RA)+"_"+str(DEC)+"_"+str(ang_diam)+'_'+c_freq+'.fits'
 	print  filename
 	out_data.write(filename,format='fits')
-	
-	print "\n\n Ding \n\n"
+
 	
 def run_AeRes(path, base, fits_filename, c_freq):
 	"""

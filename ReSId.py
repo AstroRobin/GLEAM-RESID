@@ -160,7 +160,7 @@ def extract_sources(data, RA, DEC, ang_diam, head):
 	
 	:return: a table of sources which were found to lie within the specified coordinates
 	"""
-	
+	if (verbose): print "\n <Extracting sources> \n"
 	
 	dt = []
 	for ii in data.colnames:
@@ -230,6 +230,8 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	:param DEC: declination of the image
 	:param ang_diam: angular diameter of the image
 	"param head: The path for the data 'snippet'; i.e. the Aegean formatted single frequency column table of the in_data
+	
+	:return: the filename of the catalog
 	"""
 	
 	num_sources = len(in_data)
@@ -280,28 +282,30 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	out_data['psf_b'] = in_data['psf_b_'+c_freq]
 	out_data['psf_pa'] = in_data['psf_pa_'+c_freq]
 	
-	# edit this output name to something appropriate
+	
 	filename = head+"\\"+"GLEAM_snippet_"+str(RA)+"_"+str(DEC)+"_"+str(ang_diam)+'_'+c_freq+'.fits'
-	print  filename
+	if (verbose): print "\n  ** Writing source data snippet to file: ** \n ", filename
 	out_data.write(filename,format='fits')
+	return filename
 
 	
-def run_AeRes(path, base, fits_filename, c_freq):
+def run_AeRes(head, base, fits_filename, catalog_filename, c_freq):
 	"""
 	Runs AeRes.py source subtracting program by Paul Hancock. Outputs a .fits image of the original image with the specified sources subtracted
 	
-	:param path: the path to the input source table
-	:param base: the base name of the file
+	:param head: the path to the input source table
+	:param base: the base name of the file #not implemented
 	:param fits_filename: the file name of the fits file to have sources subtracted from
+	:param catalog_filename: the file name of the source catalog snippet in Aegean format
 	:param c_freq: the central frequency.
 	"""
-	
-	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+path+'\\'+base+'_'+c_freq+'_sources.csv'+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+path+'\\'+base+'_'+c_freq+'_residual.fits'+'"')
+
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+base+'.fits"')
 
 def main():
 	usage = "usage: %prog [options] filename.fits"
 	parser = OptionParser(usage=usage)
-	parser.add_option("-f", "--fitsfile", 
+	parser.add_option("-n", "--fits_filename", 
 					  action="store",type="string",dest="fits_filename",default=None,
 					  help=".fits file name", metavar="FITS_FILE")
 	parser.add_option("-g","--galaxy",
@@ -313,7 +317,7 @@ def main():
 	parser.add_option("-v","--verbose",
 					  action="store_true", dest="verbose",default=False,
 					  help="print status messages to stdout")
-	parser.add_option("-c", "--centralfreq", 
+	parser.add_option("-f", "--central_freq", 
 					  action="store",type="string",dest="central_freq",
 					  help="provide central frequency", metavar="FREQUENCY")
 	parser.add_option("-i","--datafile",
@@ -326,7 +330,7 @@ def main():
 	parser.add_option("-d","--dec",
 					  action="store", type="float", dest="dec_map",default=None,
 					  help="declination of the image",metavar="DEC")
-	parser.add_option("-a","--angulardiameter",
+	parser.add_option("-a","--angular_diameter",
 					  action="store", type="float", dest="ang_diameter",default=2.0,
 					  help="angular diameter of the sides of the image",metavar="ANGULAR_DIAMETER")
 	parser.add_option("-b","--base",
@@ -361,18 +365,28 @@ def main():
 	# read data from input table
 	in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
-	# Extract sources which are constrained by input RA/DEC and ang_diam
-	source_data = extract_sources(in_data,options.ra_map,options.dec_map,options.ang_diameter,head)
+	catch = False
+	for search_filename in os.listdir(head):
+		if (catch): break
+		if (("GLEAM_snippet_"+str(options.ra_map)+"_"+str(options.dec_map)+"_"+str(options.ang_diameter)+"_"+options.central_freq+".fits") == search_filename):
+			print "\n  ** GLEAM_snippet data file already exists: **  \n "
+			catalog_filename = head + "\\GLEAM_snippet_"+str(options.ra_map)+"_"+str(options.dec_map)+"_"+str(options.ang_diameter)+"_"+options.central_freq+".fits"
+			catch = True
+	if (catch == False):
+		# Extract sources which are constrained by input RA/DEC and ang_diam
+		source_data = extract_sources(in_data,options.ra_map,options.dec_map,options.ang_diameter,head)
+		
+		# Convert source data to Aegean format table
+		catalog_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
 	
-	# Convert source data to Aegean format table
 	if (options.base_name == None):
-		base = tail.replace('"','').replace('.fits','')
+		base = tail.replace('.fits','')
 	else:
 		base = options.base_name
+		
+	#catalog_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
 	
-	to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
-	
-	exit()
-	run_AeRes(head, base, fits_filename, options.central_freq)
+	# run AeRes.py
+	run_AeRes(head, base, fits_filename, catalog_filename, options.central_freq)
 	
 main()

@@ -170,24 +170,25 @@ def extract_sources(data, RA, DEC, ang_diam, head):
 			
 	source_data = Table(names=(data.colnames),dtype=dt)
 	
-	ang_diam = ang_diam*math.sqrt(2)
+	ang_diam_buff = ang_diam*math.sqrt(2)
 	
 	for ii in range(0,len(data)):
-		if (data[ii]['RAJ2000'] >= RA - 0.5*ang_diam and data[ii]['RAJ2000'] <= RA + 0.5*ang_diam and data[ii]['DECJ2000'] >= DEC - 0.5*ang_diam and data[ii]['DECJ2000'] <= DEC + 0.5*ang_diam):
+		if (data[ii]['RAJ2000'] >= RA - 0.5*ang_diam_buff and data[ii]['RAJ2000'] <= RA + 0.5*ang_diam_buff and data[ii]['DECJ2000'] >= DEC - 0.5*ang_diam_buff and data[ii]['DECJ2000'] <= DEC + 0.5*ang_diam_buff):
 			source_data.add_row(data[ii])
+
+	print "\n  ** Position bounds: \n      - RA: ",RA - 0.5*ang_diam_buff," -> ",RA + 0.5*ang_diam_buff," \n      - DEC: ",DEC - 0.5*ang_diam_buff," -> ",DEC - 0.5*ang_diam_buff, "\n  ** Number of sources sources found: ", len(source_data)
 	
-	#sources_data = []
-	#for ii in range(0,len(in_data)):
-	#	in_ra = float(in_data[ii][ref["RAJ2000"]]); in_dec = float(in_data[ii][ref["DECJ2000"]])
-	#	if (in_ra >= (RA-0.5*ang_diam) and in_ra < (RA+0.5*ang_diam) and in_dec >= (DEC-0.5*ang_diam) and in_dec < (DEC+0.5*ang_diam)):
-	#		sources_data.append(in_data[ii])
-	#return sources_data
-	
-	print "\n  ** Position bounds: \n   - RA: ",RA - 0.5*ang_diam," -> ",RA + 0.5*ang_diam," \n   - DEC: ",DEC - 0.5*ang_diam," -> ",DEC - 0.5*ang_diam, "\n  ** Number of sources sources found: ", len(source_data)
-	
+	catch = False
 	filename = "GLEAM_chunk_"+str(RA)+"_"+str(DEC)+"_"+str(ang_diam)+".fits"
-	print "  ** Writing to file: **\n ", filename
-	source_data.write(head+"\\"+filename)
+	for search_filename in os.listdir(head):
+		if (catch): break
+		if (filename == search_filename):
+			print "\n  ** File already exists: **  \n ", filename
+			catch = True
+	if (catch == False):
+		print "\n  ** Writing to file: **  \n ", filename
+		source_data.write(head+"\\"+filename)
+	
 	return source_data
 	
 def calc_peak_flux (a,b,psf_a,psf_b,int_flux,err_int_flux):

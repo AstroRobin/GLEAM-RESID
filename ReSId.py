@@ -96,7 +96,62 @@ def find_gal_filename(filename):
 		exit()
 		
 	return filename
+
+def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
+	"""
+	Check whether a file already exists in current directory
 	
+	:param head: path for where to search for pre existing data tables
+	:param RA: right ascension of the map
+	:param DEC: declination of the map
+	:param ang_diam: angular diameter of the fits image
+	:param in_freq: required frequency of the map
+	
+	:return filename: the filename and path of the found file
+	"""
+	
+	
+	if (verbose): print "\n <Reading in data> \n  ** Searching for pre-existing data file **"
+	filename = None
+	snippet = False
+	catch = False
+	# Searching for filenames of form "GLEAM_chunk_{RA}_{DEC}_{ang_diam}.fits" and encompass input position.
+	for search_filename in os.listdir(head):
+		if (catch == True):
+			break
+		if ('.fits' in search_filename and ('GLEAM_chunk' in search_filename or 'GLEAM_snippet' in search_filename)):	
+			try:
+				(RA_file,DEC_file,ang_diam_file,freq_file) = search_filename.replace('.fits','').split('_')[2:]
+				snippet = True
+			except ValueError:
+				(RA_file,DEC_file,ang_diam_file) = search_filename.replace('.fits','').split('_')[2:]
+			
+			RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam_file = float(ang_diam_file)
+			file_found = False
+			if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file):
+				file_found = True
+				if (snippet == True and freq_file != in_freq):
+					file_found = False
+					
+			if (file_found == True):	
+				print "\n  ** Found pre-existing data file: ", search_filename, " **"
+				print "     - RA: ", RA_file, "\n     - DEC: ", DEC_file, "\n     - Angular diameter: ", ang_diam_file, "\n     - Frequency: ", in_freq
+				print "\n       Use this file? "
+				choice = '' # enter while loop
+				while (choice != 'y' and choice != 'n' and choice != 'Y' and choice != 'N'):
+					choice = input(">> (y/n)?: ")
+					if (choice.lower() == 'y'):
+						filename = head + "\\" + search_filename
+						catch = True
+					elif (choice == 'n' or choice == 'N'):
+						print " ** Searching for other files ** "
+					else:
+						print " ** invalid choice ** "
+	if (catch == False):
+		print "  ** No files pre-existing with appropriate positional parameters ** "
+		
+	return filename
+		
 
 def read_data(filename, RA, DEC, ang_diam, head):
 	"""
@@ -115,33 +170,11 @@ def read_data(filename, RA, DEC, ang_diam, head):
 	
 	:return: The data given from the input table in an astropy Table
 	"""
-	if (verbose): print "\n <Reading in data> \n  ** Searching for pre-existing data file **"
+	# function should check for existing filename outside of this function, i.e. in main()
 	
-	catch = False
-	# Searching for filenames of form "GLEAM_chunk_{RA}_{DEC}_{ang_diam}.fits" and encompass input position.
-	for search_filename in os.listdir(head):
-		if (catch == True):
-			break
-		if ('.fits' in search_filename and 'GLEAM_chunk' in search_filename):	
-			(RA_file,DEC_file,ang_diam_file) = search_filename.replace('.fits','').split('_')[2:5]
-			RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam_file = float(ang_diam_file)
-			if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file):
-				print "\n  ** Found pre-existing data file: ", search_filename, " **"
-				print "     - RA: ", RA_file, "\n     - DEC: ", DEC_file, "\n     - Angular diameter: ", ang_diam_file
-				print "\n       Use this file? "
-				choice = '' # enter while loop
-				while (choice != 'y' and choice != 'n' and choice != 'Y' and choice != 'N'):
-					choice = input(">> (y/n)?: ")
-					if (choice == 'y' or choice == 'Y'):
-						filename = head + "\\" + search_filename
-						catch = True
-					elif (choice == 'n' or choice == 'N'):
-						print " ** Searching for other files ** "
-					else:
-						print " ** invalid choice ** "
-	if (catch == False):
-		print "  ** No files pre-existing with appropriate positional parameters ** "
-		
+	# this needs some cleaning up
+	found_filename = check_for_file(head,RA,DEC,ang_diam)
+	if (found_filename != None): filename = found_filename
 	if verbose: print "\n  ** Using input data file: **\n "+ filename
 	in_data = Table.read(filename)
 	
@@ -289,6 +322,15 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	return filename
 
 	
+def run_Aegean(input_fits_name, input_table_name):
+	"""
+	Runs Aegean.py source finding program by Paul Hancock. Outputs tables associated with the priorized source finding of the input .fits image
+	
+	:param:
+	
+	"""
+	print 'ding'
+
 def run_AeRes(head, base, fits_filename, catalog_filename, c_freq):
 	"""
 	Runs AeRes.py source subtracting program by Paul Hancock. Outputs a .fits image of the original image with the specified sources subtracted
@@ -302,6 +344,17 @@ def run_AeRes(head, base, fits_filename, catalog_filename, c_freq):
 
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+base+'.fits"')
 
+	
+def run_BANE(fits_filename):
+	"""
+	Runs Bane.py background and rms generator program by Paul Hancock. Outputs {bkg,rms}.fits files from the input .fits image.
+	
+	:param fits_filename: the file name of the fits file to have sources subtracted from
+	"""
+	
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\BANE.py'+'"' + '"'+fits_filename+'"')
+	
+	
 def main():
 	usage = "usage: %prog [options] filename.fits"
 	parser = OptionParser(usage=usage)
@@ -362,9 +415,20 @@ def main():
 	head, tail = ntpath.split(fits_filename)
 	if (verbose): print "\n  ** Using .fits file name: '.../"+tail+"' ** "
 	
+	if (options.base_name == None):
+		base = tail.replace('.fits','')
+	else:
+		base = options.base_name
+	
+	# check if c_freq is RGB freq band
+	#if ((options.central_freq).lower() in ['red','r','green','g','blue','b']):
+	#	run_BANE(fits_filename)
+		
+	
 	# read data from input table
 	in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
+	exit()
 	catch = False
 	for search_filename in os.listdir(head):
 		if (catch): break
@@ -379,10 +443,6 @@ def main():
 		# Convert source data to Aegean format table
 		catalog_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
 	
-	if (options.base_name == None):
-		base = tail.replace('.fits','')
-	else:
-		base = options.base_name
 		
 	#catalog_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
 	

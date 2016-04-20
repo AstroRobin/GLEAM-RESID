@@ -140,7 +140,7 @@ def read_data(filename, RA, DEC, ang_diam, head):
 					else:
 						print " ** invalid choice ** "
 	if (catch == False):
-		print " ** No files pre-existing with appropriate positional parameters ** "
+		print "  ** No files pre-existing with appropriate positional parameters ** "
 		
 	if verbose: print "\n  ** Using input data file: **\n "+ filename
 	in_data = Table.read(filename)

@@ -50,12 +50,12 @@ def find_filename(filename):
 		print "  ** .fits files found: ** "
 		for kk in range(0,len(found_filenames)):
 			print " ", kk+1, " - ",found_filenames[kk]
-			file_choice = "-1"
-		while (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
-			file_choice = input(">> Select file: ")
-			if (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
+			file_choice = -1
+		while (file_choice < 1 or file_choice > len(found_filenames)):
+			file_choice = int(raw_input(">> Select file: "))
+			if (file_choice < 1 or file_choice > len(found_filenames)):
 				print " ** invalid choice ** "
-		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[int(file_choice)-1]
+		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[file_choice-1]
 	else:
 		print " ** No .fits files found with name '", filename,"' **\n   -- ABORTING --   "
 		exit()
@@ -85,12 +85,12 @@ def find_gal_filename(filename):
 		print "  ** .fits files found: ** "
 		for kk in range(0,len(found_filenames)):
 			print " ", kk+1, " - ",found_filenames[kk]
-		file_choice = "-1"
-		while (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
-			file_choice = input(">> Select file: ")
-			if (int(file_choice) < 1 or int(file_choice) > len(found_filenames)):
+		file_choice = -1
+		while (file_choice < 1 or file_choice > len(found_filenames)):
+			file_choice = int(raw_input(">> Select file: "))
+			if (file_choice < 1 or file_choice > len(found_filenames)):
 				print " ** invalid choice ** "
-		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[int(file_choice)-1]+'\\'+found_filenames[int(file_choice)-1]+'.fits'
+		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[file_choice-1]+'\\'+found_filenames[file_choice-1]+'.fits'
 	else:
 		print " ** No .fits files found with name '", filename,"' **\n   -- ABORTING --   "
 		exit()
@@ -139,7 +139,7 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
 				print "\n       Use this file? "
 				choice = '' # enter while loop
 				while (choice != 'y' and choice != 'n' and choice != 'Y' and choice != 'N'):
-					choice = input(">> (y/n)?: ")
+					choice = str(raw_input(">> (y/n)?: "))
 					if (choice.lower() == 'y'):
 						filename = head + "\\" + search_filename
 						catch = True
@@ -409,7 +409,7 @@ def main():
 		if (options.fits_filename != None):
 			fits_filename = options.fits_filename
 		else:
-			fits_filename = input(' >> Search for .fits file: ')
+			fits_filename = str(raw_input(' >> Search for .fits file: '))
 		fits_filename = find_filename(fits_filename)
 
 	head, tail = ntpath.split(fits_filename)

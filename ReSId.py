@@ -25,6 +25,10 @@ from optparse import OptionParser
 
 from progressbar import ProgressBar, Bar, Percentage
 
+# Imports for get_gleam()
+from gleam_vo_example import GleamVoProxy, download_file
+import pyvo
+
 def find_filename(filename):
 	"""
 	Find .fits file in directory.
@@ -108,6 +112,7 @@ def get_frequency(freq):
 	DL_freq: for use in downloading files from GLEAM postage stamp service
 	"""
 	
+	if (verbose): print " <Finding frequency range>"
 	freq_ref = {'076':'072-080','084':'080-088','092':'088-095','099':'095-103','107':'103-111','115':'111-118','122':'118-126','130':'126-134','143':'139-147','151':'147-154','158':'154-162','166':'162-170','174':'170-177','181':'177-185','189':'185-193','197':'193-200','204':'200-208','212':'208-216','220':'216-223','227':'223-231','red':'072-103','green':'103-134','blue':'139-170','deep':'170-231'}
 	
 	if ('mhz' in freq.lower()): freq = freq.lower().replace('mhz','')
@@ -402,8 +407,19 @@ def run_BANE(fits_filename):
 	
 def get_cutout(access_url, ra, dec, size=1.0, freqs=[], regrid=False, download_dir=None, listf=False):
     """
-    PyVO examples are here
-    """
+    Automatically download GLEAM images from the postage stamp server using the template code that Chen has written.
+	This function was written in majority by Paul Hancock, Aug-2015.
+    
+	:param access_url: the url for the GLEAM postage stamp service
+	:param ra: the centre RA of the map
+	:param dec: the centre DEC of the map
+	:param size: the angular diameter of the map
+	:param freqs: a list of length = 1, containing the frequency band to be downloaded
+	:param regrid: ?
+	:param download_dir: Directory for which to save .fits image to
+	:param listf: True/False depending on whether one wishes to print frequency list or not.
+	"""
+	
     if (download_dir and (not os.path.exists(download_dir))):
         print "Invalid download dir: {0}".format(download_dir)
         return
@@ -426,7 +442,7 @@ def get_cutout(access_url, ra, dec, size=1.0, freqs=[], regrid=False, download_d
         # only process the frequencies of interest
         if not freq in freqs:
             continue
-        print 'dl'
+        print ' ** Downloading **'
         url = img.acref
         if (download_dir):
             download_file(url, ra, dec, freq, download_dir)
@@ -434,8 +450,9 @@ def get_cutout(access_url, ra, dec, size=1.0, freqs=[], regrid=False, download_d
             print freq, url
 
 	
+	
 def main():
-	usage = "usage: %prog [options] filename.fits"
+	usage = "usage: %prog [options] "
 	parser = OptionParser(usage=usage)
 	parser.add_option("-n", "--fits_filename", 
 					  action="store",type="string",dest="fits_filename",default=None,
@@ -499,6 +516,14 @@ def main():
 			while True:
 				choice = str(raw_input(">> (y/n)?: "))
 				if (choice.lower() == 'y'):
+					print "\n <Downloading .fits file>"
+					# start the gleam proxy
+					gvp = GleamVoProxy()
+					#gvp = GleamVoProxy(p_port=7799)
+					gvp.start()
+					(out_dir_head, out_dir_tail) = ntpath.split(options.data_filename)
+					get_cutout(gvp.access_url, options.ra_map, options.dec_map, options.ang_diameter, DL_freq, download_dir=out_dir_head+'\\Downloads', listf=False)
+					gvp.stop()
 					break
 				elif (choice.lower() == 'n'):
 					print "  ** Not attempting to download .fits filename **\n\n   -- ABORTING --   "

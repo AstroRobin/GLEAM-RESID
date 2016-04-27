@@ -97,6 +97,43 @@ def find_gal_filename(filename):
 		
 	return filename
 
+def get_frequency(freq):
+	"""
+	Standardizes the input frequency to one that ReSId can understand. Accepts many different input formats for frequency.
+	
+	:param freq: frequency input by the user
+	
+	:return: 
+	freq: for numerical comparison
+	DL_freq: for use in downloading files from GLEAM postage stamp service
+	"""
+	
+	freq_ref = {'076':'072-080','084':'080-088','092':'088-095','099':'095-103','107':'103-111','115':'111-118','122':'118-126','130':'126-134','143':'139-147','151':'147-154','158':'154-162','166':'162-170','174':'170-177','181':'177-185','189':'185-193','197':'193-200','204':'200-208','212':'208-216','220':'216-223','227':'223-231','red':'072-103','green':'103-134','blue':'139-170','deep':'170-231'}
+	
+	if ('mhz' in freq.lower()): freq = freq.lower().replace('mhz','')
+	if (len(freq) == 2): # check if this is a valid 2 digit input, if so add a zero prefix
+		try:
+			if (int(freq) < 72): print "  ** WARNING: input frequency out of range **\n   -- ABORTING --   "; exit()
+			else: freq = '0'+freq
+		except ValueError:
+			print "  ** WARNING: input frequency not a number **"
+	if (freq.lower() in ['red','r']): freq = 'red'
+	if (freq.lower() in ['green','g']): freq = 'green'
+	if (freq.lower() in ['blue','b']): freq = 'blue'
+	if (freq.lower() in ['white','deep','wide','w']): freq = 'deep'
+	
+	try:
+		DL_freq = freq_ref[freq]
+	except KeyError:
+		print " ** WARNING: no frequency '",freq,"' found **\n    Available frequencies: "
+		for ii in freq_ref: print '     - '+ii
+		while True:
+			choice = str(raw_input('\n>> Choose frequency: '))
+			if (choice in freq_ref): freq = choice; DL_freq = freq_ref[freq]; break
+			else: print "  ** WARNING: invalid choice **"
+
+	return [freq, DL_freq]
+	
 def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
 	"""
 	Check whether a file already exists in current directory
@@ -442,8 +479,9 @@ def main():
 	(options, args) = parser.parse_args()	
 	global verbose; verbose = options.verbose
 	
-	
-	# remove below
+	(options.central_freq, DL_freq) = get_frequency(options.central_freq)
+	if (verbose): print "\n   Using Frequency values: \n    - Central = "+options.central_freq+'\n    - Range = ',DL_freq
+
 	if (options.galaxy_name != None and options.fits_filename != None): 
 		print " ** WARNING: Both -g (--galaxy) and -f (--fitsfile) have been specified **\n   -- ABORTING --   "
 		exit()
@@ -454,17 +492,16 @@ def main():
 		if (options.fits_filename != None): # FITS_Filename has been specified by user
 			fits_filename = find_filename(options.fits_filename)
 		else:
-			print "  ** No .fits filename specified **"
+			print "\n  ** No .fits filename specified **"
 			if (options.ra_map == None or options.dec_map == None): print "  ** WARNING: Must specify both RA and DEC **\n   -- ABORTING --   "; exit()
 			print "    Do you want to attempt downloading .fits file from < GLEAM Postage Stamp Service > using parameters: "
-			print "  - RA: ", options.ra_map,"\n  - DEC: ", options.dec_map,"\n  - Angular Diameter: ", options.ang_diameter, "\n  - Frequency: ", options.central_freq
+			print "  - RA: ", options.ra_map,"\n  - DEC: ", options.dec_map,"\n  - Angular Diameter: ", options.ang_diameter, "\n  - Frequency: ", DL_freq, " MHz"
 			while True:
 				choice = str(raw_input(">> (y/n)?: "))
 				if (choice.lower() == 'y'):
-					
 					break
 				elif (choice.lower() == 'n'):
-					print "  ** Not attempting to download .fits filename **\n   -- ABORTING --   "
+					print "  ** Not attempting to download .fits filename **\n\n   -- ABORTING --   "
 					exit()
 					
 					
@@ -485,12 +522,13 @@ def main():
 		run_BANE(fits_filename)
 		
 		# Standardise central_freq output
+		# Now redundant
 		if ((options.central_freq).lower() in ['red','r']):
-			options.central_freq = 'RED'
+			options.central_freq = 'red'
 		elif ((options.central_freq).lower() in ['green','g']):
-			options.central_freq = 'GREEN'
+			options.central_freq = 'green'
 		elif ((options.central_freq).lower() in ['blue','b']):
-			options.central_freq = 'BLUE'
+			options.central_freq = 'blue'
 			
 		if (verbose): print '\n  ** Stacked frequency band: '+options.central_freq+' chosen **  '
 		

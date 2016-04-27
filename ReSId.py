@@ -109,9 +109,8 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
 	
 	:return filename: the filename and path of the found file
 	"""
-	
-	
-	if (verbose): print "\n <Reading in data> \n  ** Searching for pre-existing data file **"
+
+	if (verbose): print "\n  ** Searching for pre-existing data file **"
 	filename = None
 	snippet = False
 	catch = False
@@ -131,6 +130,7 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
 			if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file):
 				file_found = True
 				if (snippet == True and freq_file != in_freq):
+					print 'ding'
 					file_found = False
 					
 			if (file_found == True):	
@@ -151,7 +151,6 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
 		print "  ** No files pre-existing with appropriate positional parameters ** "
 		
 	return filename
-		
 
 def read_data(filename, RA, DEC, ang_diam, head):
 	"""
@@ -172,6 +171,8 @@ def read_data(filename, RA, DEC, ang_diam, head):
 	"""
 	# function should check for existing filename outside of this function, i.e. in main()
 	
+	if (verbose): print ' <Reading in data>'
+	
 	# this needs some cleaning up
 	found_filename = check_for_file(head,RA,DEC,ang_diam)
 	if (found_filename != None): filename = found_filename
@@ -180,7 +181,6 @@ def read_data(filename, RA, DEC, ang_diam, head):
 	
 	return in_data
 	
-
 def extract_sources(data, RA, DEC, ang_diam, head):
 	"""
 	Find sources that are positioned with the dimensions of the image specified.
@@ -252,7 +252,6 @@ def calc_peak_flux (a,b,psf_a,psf_b,int_flux,err_int_flux):
 	
 	return [peak_flux, err_peak_flux]
 	
-	
 def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	"""
 	configures source data into a format that Aegean/AeRes can understand.
@@ -321,30 +320,39 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	out_data.write(filename,format='fits')
 	return filename
 
-	
-def run_Aegean(input_fits_name, input_table_name):
+def run_Aegean(input_fits_name, input_table_name, RA, DEC, ang_diam, freq, head):
 	"""
 	Runs Aegean.py source finding program by Paul Hancock. Outputs tables associated with the priorized source finding of the input .fits image
 	
-	:param:
-	
+	:param input_fits_name: the input .fits filename to have sources detected with
+	:param input_table_name: the input table of sources to be used in the priorized fitting
+	:param RA: right ascension of the image
+	:param DEC: declination of the image
+	:param ang_diam: angular diameter of the image
+	:param freq: central frequency of the data
+	:param head: the path to the input source table
 	"""
-	print 'ding'
-
-def run_AeRes(head, base, fits_filename, catalog_filename, c_freq):
+	
+	if (verbose): print "\n <Running Aegean.py>"
+	
+	out_filename = 'GLEAM_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+freq
+	
+	print 'python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"'+' --floodclip=3' + ' --autoload' + ' --telescope=MWA ' + '"'+input_fits_name+'"'
+	
+def run_AeRes(fits_filename, catalog_filename, c_freq, head, base):
 	"""
 	Runs AeRes.py source subtracting program by Paul Hancock. Outputs a .fits image of the original image with the specified sources subtracted
 	
-	:param head: the path to the input source table
-	:param base: the base name of the file #not implemented
 	:param fits_filename: the file name of the fits file to have sources subtracted from
 	:param catalog_filename: the file name of the source catalog snippet in Aegean format
 	:param c_freq: the central frequency.
+	:param head: the path to the input source table
+	:param base: the base name of the file #not implemented
 	"""
-
+	
+	if (verbose): print "\n <Running AeRes.py>"
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+base+'.fits"')
 
-	
 def run_BANE(fits_filename):
 	"""
 	Runs Bane.py background and rms generator program by Paul Hancock. Outputs {bkg,rms}.fits files from the input .fits image.
@@ -352,8 +360,42 @@ def run_BANE(fits_filename):
 	:param fits_filename: the file name of the fits file to have sources subtracted from
 	"""
 	
-	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\BANE.py'+'"' + '"'+fits_filename+'"')
+	if (verbose): print "\n <Running BANE.py>"
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\BANE.py'+'"' + ' ' + '"'+fits_filename+'"')
 	
+def get_cutout(access_url, ra, dec, size=1.0, freqs=[], regrid=False, download_dir=None, listf=False):
+    """
+    PyVO examples are here
+    """
+    if (download_dir and (not os.path.exists(download_dir))):
+        print "Invalid download dir: {0}".format(download_dir)
+        return
+    from pyvo.dal import sia
+    svc = sia.SIAService(access_url) #start Simple Image Access service
+    pos = (ra, dec) # position
+    if (regrid):
+        images = svc.search(pos, size, grid_opt="regrid")
+    else:
+        images = svc.search(pos, size)
+        
+    if listf:
+        print "Available freq ranges are:"
+        for img in images:
+            print img.get('freq')
+        return
+    for img in images:
+        # for each mached image, download or print its frequency and access url
+        freq = img.get('freq')
+        # only process the frequencies of interest
+        if not freq in freqs:
+            continue
+        print 'dl'
+        url = img.acref
+        if (download_dir):
+            download_file(url, ra, dec, freq, download_dir)
+        else:
+            print freq, url
+
 	
 def main():
 	usage = "usage: %prog [options] filename.fits"
@@ -371,7 +413,7 @@ def main():
 					  action="store_true", dest="verbose",default=False,
 					  help="print status messages to stdout")
 	parser.add_option("-f", "--central_freq", 
-					  action="store",type="string",dest="central_freq",
+					  action="store",type="string",dest="central_freq", default='deep',
 					  help="provide central frequency", metavar="FREQUENCY")
 	parser.add_option("-i","--datafile",
 					  action="store", dest="data_filename", 
@@ -396,22 +438,40 @@ def main():
 	#				  help="")
 	
 	
+	
 	(options, args) = parser.parse_args()	
 	global verbose; verbose = options.verbose
 	
-	if (options.galaxy_name != None and options.fits_filename != None):
-		print " ** -g (--galaxy) and -f (--fitsfile) have been specified **\n   -- ABORTING --   "
+	
+	# remove below
+	if (options.galaxy_name != None and options.fits_filename != None): 
+		print " ** WARNING: Both -g (--galaxy) and -f (--fitsfile) have been specified **\n   -- ABORTING --   "
 		exit()
 	
-	if (options.galaxy_name != None):
-		fits_filename = find_gal_filename(options.galaxy_name)	
+	if (options.galaxy_name != None): # Galaxy FITS_Filename has been specified by user
+		fits_filename = find_gal_filename(options.galaxy_name)
 	else:
-		if (options.fits_filename != None):
-			fits_filename = options.fits_filename
+		if (options.fits_filename != None): # FITS_Filename has been specified by user
+			fits_filename = find_filename(options.fits_filename)
 		else:
-			fits_filename = str(raw_input(' >> Search for .fits file: '))
-		fits_filename = find_filename(fits_filename)
+			print "  ** No .fits filename specified **"
+			if (options.ra_map == None or options.dec_map == None): print "  ** WARNING: Must specify both RA and DEC **\n   -- ABORTING --   "; exit()
+			print "    Do you want to attempt downloading .fits file from < GLEAM Postage Stamp Service > using parameters: "
+			print "  - RA: ", options.ra_map,"\n  - DEC: ", options.dec_map,"\n  - Angular Diameter: ", options.ang_diameter, "\n  - Frequency: ", options.central_freq
+			while True:
+				choice = str(raw_input(">> (y/n)?: "))
+				if (choice.lower() == 'y'):
+					
+					break
+				elif (choice.lower() == 'n'):
+					print "  ** Not attempting to download .fits filename **\n   -- ABORTING --   "
+					exit()
+					
+					
+			# fits_filename = str(raw_input(' >> Search for .fits file: '))
 
+	exit()
+			
 	head, tail = ntpath.split(fits_filename)
 	if (verbose): print "\n  ** Using .fits file name: '.../"+tail+"' ** "
 	
@@ -420,15 +480,35 @@ def main():
 	else:
 		base = options.base_name
 	
-	# check if c_freq is RGB freq band
-	#if ((options.central_freq).lower() in ['red','r','green','g','blue','b']):
-	#	run_BANE(fits_filename)
+	# check if c_freq is RGB freq band -> in which case, need to generate table of found sources in .fits image by running Aegean
+	if ((options.central_freq).lower() in ['red','r','green','g','blue','b']):
+		run_BANE(fits_filename)
 		
+		# Standardise central_freq output
+		if ((options.central_freq).lower() in ['red','r']):
+			options.central_freq = 'RED'
+		elif ((options.central_freq).lower() in ['green','g']):
+			options.central_freq = 'GREEN'
+		elif ((options.central_freq).lower() in ['blue','b']):
+			options.central_freq = 'BLUE'
+			
+		if (verbose): print '\n  ** Stacked frequency band: '+options.central_freq+' chosen **  '
+		
+		deep_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),'deep')
+		
+		if (deep_filename == None):
+			# in future, do not exit -> rather automatically run through ReSId process and generate _deep snippet
+			print '\n  ** Warning: No _deep GLEAM_snippet_...fits exists for this field **  \n  ** Please run ReSId.py with -central_freq=deep **\n   -- ABORTING --  '
+			exit()
+		
+		run_Aegean(fits_filename,deep_filename,str(options.ra_map),str(options.dec_map),str(options.ang_diameter),options.central_freq,head)
+		
+	else: # user has not specified an RGB frequency band	
+		# read data from input table
+		in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
-	# read data from input table
-	in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
-	exit()
+	# Possibly merge below file search into check_for_file() function
 	catch = False
 	for search_filename in os.listdir(head):
 		if (catch): break
@@ -447,6 +527,6 @@ def main():
 	#catalog_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
 	
 	# run AeRes.py
-	run_AeRes(head, base, fits_filename, catalog_filename, options.central_freq)
+	run_AeRes(fits_filename, catalog_filename, options.central_freq, head, base)
 	
 main()

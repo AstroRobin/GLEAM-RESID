@@ -414,7 +414,7 @@ def main():
 					  help="print status messages to stdout")
 	parser.add_option("-f", "--central_freq", 
 					  action="store",type="string",dest="central_freq", default='deep',
-					  help="provide central frequency", metavar="FREQUENCY")
+					  help="provide central frequency (MHz)", metavar="FREQUENCY")
 	parser.add_option("-i","--datafile",
 					  action="store", dest="data_filename", 
 					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\GLEAMIDR3.csv",

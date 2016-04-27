@@ -405,7 +405,7 @@ def run_BANE(fits_filename):
 	if (verbose): print "\n <Running BANE.py>"
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\BANE.py'+'"' + ' ' + '"'+fits_filename+'"')
 	
-def get_cutout(access_url, ra, dec, size=1.0, freqs=[], regrid=False, download_dir=None, listf=False):
+def get_cutout(access_url, ra, dec, central_freq, size=2.0, freqs=[], regrid=False, download_dir=None, listf=False):
     """
     Automatically download GLEAM images from the postage stamp server using the template code that Chen has written.
 	This function was written in majority by Paul Hancock, Aug-2015.
@@ -413,6 +413,7 @@ def get_cutout(access_url, ra, dec, size=1.0, freqs=[], regrid=False, download_d
 	:param access_url: the url for the GLEAM postage stamp service
 	:param ra: the centre RA of the map
 	:param dec: the centre DEC of the map
+	:param central_freq: central frequency of map; usage in file rename  
 	:param size: the angular diameter of the map
 	:param freqs: a list of length = 1, containing the frequency band to be downloaded
 	:param regrid: ?
@@ -448,8 +449,9 @@ def get_cutout(access_url, ra, dec, size=1.0, freqs=[], regrid=False, download_d
             download_file(url, ra, dec, freq, download_dir)
         else:
             print freq, url
-
-	
+			
+	print 'rename '+'"'+download_dir+'\\'+str(ra)+'_'+str(dec)+'_'+freqs+'.fits"'+' "'+download_dir+'\\GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits"'		
+	os.system('rename '+'"'+download_dir+'\\'+str(ra)+'_'+str(dec)+'_'+freqs+'.fits"'+' "GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits"')
 	
 def main():
 	usage = "usage: %prog [options] "
@@ -522,7 +524,7 @@ def main():
 					#gvp = GleamVoProxy(p_port=7799)
 					gvp.start()
 					(out_dir_head, out_dir_tail) = ntpath.split(options.data_filename)
-					get_cutout(gvp.access_url, options.ra_map, options.dec_map, options.ang_diameter, DL_freq, download_dir=out_dir_head+'\\Downloads', listf=False)
+					get_cutout(gvp.access_url, options.ra_map, options.dec_map, options.central_freq, options.ang_diameter, DL_freq, download_dir=out_dir_head+'\\Downloads', listf=False)
 					gvp.stop()
 					break
 				elif (choice.lower() == 'n'):

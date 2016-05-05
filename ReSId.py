@@ -66,38 +66,58 @@ def find_filename(filename):
 		
 	return filename
 	
-def find_gal_filename(filename):
+def find_gal_filename(galaxy,freq):
 	"""
 	Find .fits file in directory for a dwarf galaxy
 	
 	:param filename: The name of the fits file to be searched for
+	:param freq: the frequency of the image
 	
 	:return: The .fits file name and path
 	"""
-	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '"+filename+"' **"
+	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '"+galaxy+"' **"
 
+	dir_str = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'
+	
+	# look for directories with the name of the galaxy given
+	gal_dirs = os.listdir(dir_str)	
+	for dir_name in gal_dirs:
+		if (dir_name == galaxy):
+			dir_str = dir_str + dir_name
+		else:
+			print "\n  ** WARNING: no directory '",galaxy,"' found **\n  "
+			while True:
+				choice = str(raw_input(" >> Make new galaxy directory '"+galaxy+"' (y/n)?: "))
+				if ('y' in choice.lower()): # make new directory for this folder
+					os.system('mkdir '+ dir_str+galaxy)
+					dir_str = dir_str + galaxy
+				elif ('n' in choice.lower()): # don't make new file -> ABORT
+					print "\n -- ABORTING --   "; exit()
+	
+	# look for files in galaxy directory with 'cutout' in their name
 	found_filenames = []
-	dir_str = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images'
-	gal_dirs = os.listdir(dir_str)
-	for dir_filename in gal_dirs:
-		if (filename in dir_filename):
-			found_filenames.append(dir_filename)
+	gal_files = os.listdir(dir_str)
+	for file_name in gal_files:
+		if ('cutout' in file_name and freq in file_name):
+			found_filenames.append(file_name)
 	if (len(found_filenames) == 1):
 		print "  ** Found .fits file: ", found_filenames[0], " **"
-		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[0]+'\\'+found_filenames[0]+'.fits'
+		filename = dir_str + '\\' + found_filenames[0]
 	elif (len(found_filenames) > 1):
-		print "  ** .fits files found: ** "
-		for kk in range(0,len(found_filenames)):
-			print " ", kk+1, " - ",found_filenames[kk]
-		file_choice = -1
-		while (file_choice < 1 or file_choice > len(found_filenames)):
-			file_choice = int(raw_input(">> Select file: "))
-			if (file_choice < 1 or file_choice > len(found_filenames)):
-				print " ** invalid choice ** "
-		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[file_choice-1]+'\\'+found_filenames[file_choice-1]+'.fits'
+		for kk in range(len(found_filenames)): print " ",str(kk+1)," - ",found_filenames[kk]
+		while True:
+			choice = raw_input(" >> Choose file: ")
+			try:
+				choice = int(choice)
+				if (choice >= 1 and choice <= len(found_filename)):
+					filename = dir_str + '\\' + found_filename[choice-1]; break
+				else:
+					print "  ** ERROR: input out of bounds **  "
+			except ValueError:
+				print "  ** ERROR: invalid input **  "
 	else:
-		print " ** No .fits files found with name '", filename,"' **\n   -- ABORTING --   "
-		exit()
+		print " ** WARNING: No GLEAM_cutout_.fits files found in '", galaxy,"' directory **\n   -- ABORTING --   "; exit() # TODO: change this to ask user if they want to download a cutout.
+	
 		
 	return filename
 
@@ -379,7 +399,7 @@ def run_Aegean(input_fits_name, input_table_name, RA, DEC, ang_diam, freq, head)
 	
 	out_filename = 'GLEAM_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+freq
 	
-	print 'python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"'+' --floodclip=3' + ' --autoload' + ' --telescope=MWA ' + '"'+input_fits_name+'"'
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"'+' --floodclip=3' + ' --autoload' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
 	
 def run_AeRes(fits_filename, catalog_filename, c_freq, head, base):
 	"""
@@ -404,6 +424,7 @@ def run_BANE(fits_filename):
 	
 	if (verbose): print "\n <Running BANE.py>"
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\BANE.py'+'"' + ' ' + '"'+fits_filename+'"')
+	
 	
 def get_cutout(access_url, ra, dec, central_freq, size=2.0, freqs=[], regrid=False, download_dir=None, listf=False):
     """
@@ -509,7 +530,7 @@ def main():
 		exit()
 	
 	if (options.galaxy_name != None): # Galaxy FITS_Filename has been specified by user
-		fits_filename = find_gal_filename(options.galaxy_name)
+		fits_filename = find_gal_filename(options.galaxy_name, options.central_freq)
 	else:
 		if (options.fits_filename != None): # FITS_Filename has been specified by user
 			fits_filename = find_filename(options.fits_filename)
@@ -569,6 +590,7 @@ def main():
 			exit()
 		
 		run_Aegean(fits_filename,deep_filename,str(options.ra_map),str(options.dec_map),str(options.ang_diameter),options.central_freq,head)
+		in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 		
 	else: # user has not specified an RGB frequency band	
 		# read data from input table

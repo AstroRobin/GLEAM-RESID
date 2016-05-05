@@ -61,7 +61,7 @@ def find_filename(filename):
 				print " ** invalid choice ** "
 		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[file_choice-1]
 	else:
-		print " ** No .fits files found with name '", filename,"' **\n   -- ABORTING --   "
+		print " ** No .fits files found with name '", filename,"' **\n    -- ABORTING --   "
 		exit()
 		
 	return filename
@@ -86,7 +86,9 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 	gal_dirs = os.listdir(dir_str)	
 	for dir_name in gal_dirs:
 		if (dir_name == galaxy):
+			print "  ** Found directory: '",galaxy,"' **  \n"
 			dir_str = dir_str + dir_name
+			break
 		else:
 			print "\n  ** WARNING: no directory '",galaxy,"' found **\n  "
 			while True:
@@ -95,7 +97,7 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 					os.system('mkdir '+ dir_str+galaxy)
 					dir_str = dir_str + galaxy
 				elif ('n' in choice.lower()): # don't make new directory -> ABORT
-					print "\n -- ABORTING --   "; exit()
+					print "\n    -- ABORTING --   "; exit()
 	
 	# look for files in galaxy directory with 'cutout' in their name
 	found_filenames = []
@@ -124,7 +126,7 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 		while True:
 			choice = str(raw_input(" >> Download (y/n)?: "))
 			if ('y' in choice.lower()): # download cutout
-				filename = get_cutout(ra, dec, freq, DL_freq, options.ang_diameter, download_dir=dir_str, listf=False)
+				filename = get_cutout(ra, dec, freq, ang_diam, download_dir=dir_str, listf=False)
 				break
 			elif ('n' in choice.lower()): # don't download cutout -> ABORT
 				print "\n -- ABORTING --   "; exit()
@@ -232,7 +234,7 @@ def read_data(filename, RA, DEC, ang_diam, head):
 	"""
 	# function should check for existing filename outside of this function, i.e. in main()
 	
-	if (verbose): print ' <Reading in data>'
+	if (verbose): print '\n <Reading in data>'
 	
 	# this needs some cleaning up
 	found_filename = check_for_file(head,RA,DEC,ang_diam)
@@ -425,7 +427,7 @@ def run_BANE(fits_filename):
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\BANE.py'+'"' + ' ' + '"'+fits_filename+'"')
 	
 	
-def get_cutout(ra, dec, central_freq, size=2.0, download_dir=None, listf=False):
+def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 	"""
 	Automatically download GLEAM images from the postage stamp server using the template code that Chen has written.
 	This function was written in majority by Paul Hancock, Aug-2015.
@@ -442,44 +444,44 @@ def get_cutout(ra, dec, central_freq, size=2.0, download_dir=None, listf=False):
 	
 	freq_ref = {'076':'072-080','084':'080-088','092':'088-095','099':'095-103','107':'103-111','115':'111-118','122':'118-126','130':'126-134','143':'139-147','151':'147-154','158':'154-162','166':'162-170','174':'170-177','181':'177-185','189':'185-193','197':'193-200','204':'200-208','212':'208-216','220':'216-223','227':'223-231','red':'072-103','green':'103-134','blue':'139-170','deep':'170-231'}
 	try:
-		freqs = freq_ref[freq]
-	except KeyError:
+		freqs = freq_ref[central_freq]
+	except KeyError: # this should actually be handled by get_frequency()
 		print " ** WARNING: no frequency '",freq,"' found **\n    Available frequencies: "
 		for ii in freq_ref: print '      - '+ii
 		while True:
 			choice = str(raw_input('\n >> Choose frequency: '))
-			if (choice in freq_ref): freqs = freq_ref[freq]; break
+			if (choice in freq_ref): freqs = freq_ref[central_freq]; break
 			else: print "\n  ** ERROR: invalid choice **  "
 	
 	print "\n <Downloading .fits file>"
 	gvp = GleamVoProxy() # start the gleam proxy // gvp = GleamVoProxy(p_port=7799)
 	gvp.start()
+
+	if (download_dir and (not os.path.exists(download_dir))):
+		print "Invalid download dir: {0}".format(download_dir)
+		return
+	from pyvo.dal import sia
+	svc = sia.SIAService(gvp.access_url) #start Simple Image Access service
+	pos = (ra, dec) # position
+	images = svc.search(pos, size)
 	
-    if (download_dir and (not os.path.exists(download_dir))):
-        print "Invalid download dir: {0}".format(download_dir)
-        return
-    from pyvo.dal import sia
-    svc = sia.SIAService(gvp.access_url) #start Simple Image Access service
-    pos = (ra, dec) # position
-    images = svc.search(pos, size)
-        
-    if listf:
-        print "Available freq ranges are:"
-        for img in images:
-            print img.get('freq')
-        return
-    for img in images:
-        # for each mached image, download or print its frequency and access url
-        freq = img.get('freq')
-        # only process the frequencies of interest
-        if not freq in freqs:
-            continue
-        print ' ** Downloading **'
-        url = img.acref
-        if (download_dir):
-            download_file(url, ra, dec, freq, download_dir)
-        else:
-            print freq, url
+	if listf:
+		print "Available freq ranges are:"
+		for img in images:
+			print img.get('freq')
+		return
+	for img in images:
+		# for each mached image, download or print its frequency and access url
+		freq = img.get('freq')
+		# only process the frequencies of interest
+		if not freq in freqs:
+			continue
+		print ' ** Downloading **'
+		url = img.acref
+		if (download_dir):
+			download_file(url, ra, dec, freq, download_dir)
+		else:
+			print freq, url
 	
 	os.system('rename '+'"'+download_dir+'\\'+str(ra)+'_'+str(dec)+'_'+freqs+'.fits"'+' "GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits"')
 	return download_dir+'\\GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits'
@@ -533,14 +535,14 @@ def main():
 	global verbose; verbose = options.verbose
 	
 	options.central_freq = get_frequency(options.central_freq)
-	if (verbose): print "\n   Using Frequency values: \n    - Central = "+options.central_freq+'\n    - Range = ',DL_freq
+	if (verbose): print "\n  ** Using frequency: "+options.central_freq," **  "
 
 	if (options.galaxy_name != None and options.fits_filename != None): 
-		print " ** WARNING: Both -g (--galaxy) and -f (--fitsfile) have been specified **\n   -- ABORTING --   "
+		print "\n ** WARNING: Both -g (--galaxy) and -f (--fitsfile) have been specified **\n   -- ABORTING --   "
 		exit()
 	
 	if (options.galaxy_name != None): # Galaxy FITS_Filename has been specified by user
-		fits_filename = find_gal_filename(options.galaxy_name, options.central_freq)
+		fits_filename = find_gal_filename(options.galaxy_name, options.ra_map, options.dec_map, options.ang_diameter, options.central_freq)
 	else:
 		if (options.fits_filename != None): # FITS_Filename has been specified by user
 			fits_filename = find_filename(options.fits_filename)

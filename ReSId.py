@@ -393,7 +393,7 @@ def run_AeRes(fits_filename, catalog_filename, c_freq, head, base):
 	"""
 	
 	if (verbose): print "\n <Running AeRes.py>"
-	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+base+'.fits"')
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"')
 
 def run_BANE(fits_filename):
 	"""
@@ -419,6 +419,8 @@ def get_cutout(access_url, ra, dec, central_freq, size=2.0, freqs=[], regrid=Fal
 	:param regrid: ?
 	:param download_dir: Directory for which to save .fits image to
 	:param listf: True/False depending on whether one wishes to print frequency list or not.
+	
+	:return filename: the file name of the downloaded .fitsfile
 	"""
 	
     if (download_dir and (not os.path.exists(download_dir))):
@@ -449,9 +451,10 @@ def get_cutout(access_url, ra, dec, central_freq, size=2.0, freqs=[], regrid=Fal
             download_file(url, ra, dec, freq, download_dir)
         else:
             print freq, url
-			
-	print 'rename '+'"'+download_dir+'\\'+str(ra)+'_'+str(dec)+'_'+freqs+'.fits"'+' "'+download_dir+'\\GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits"'		
+	
 	os.system('rename '+'"'+download_dir+'\\'+str(ra)+'_'+str(dec)+'_'+freqs+'.fits"'+' "GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits"')
+	return download_dir+'\\GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits'
+	
 	
 def main():
 	usage = "usage: %prog [options] "
@@ -524,7 +527,7 @@ def main():
 					#gvp = GleamVoProxy(p_port=7799)
 					gvp.start()
 					(out_dir_head, out_dir_tail) = ntpath.split(options.data_filename)
-					get_cutout(gvp.access_url, options.ra_map, options.dec_map, options.central_freq, options.ang_diameter, DL_freq, download_dir=out_dir_head+'\\Downloads', listf=False)
+					fits_filename = get_cutout(gvp.access_url, options.ra_map, options.dec_map, options.central_freq, options.ang_diameter, DL_freq, download_dir=out_dir_head+'\\Downloads', listf=False)
 					gvp.stop()
 					break
 				elif (choice.lower() == 'n'):
@@ -534,8 +537,7 @@ def main():
 					
 			# fits_filename = str(raw_input(' >> Search for .fits file: '))
 
-	exit()
-			
+		
 	head, tail = ntpath.split(fits_filename)
 	if (verbose): print "\n  ** Using .fits file name: '.../"+tail+"' ** "
 	

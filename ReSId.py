@@ -79,12 +79,14 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 	:return: The .fits file name and path
 	"""
 	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '"+galaxy+"' **"
-
+	
 	dir_str = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'
 	
 	# look for directories with the name of the galaxy given
+	catch = False
 	gal_dirs = os.listdir(dir_str)	
 	for dir_name in gal_dirs:
+		if (catch): break
 		if (dir_name == galaxy):
 			print "  ** Found directory: '",galaxy,"' **  \n"
 			dir_str = dir_str + dir_name
@@ -94,8 +96,9 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 			while True:
 				choice = str(raw_input(" >> Make new galaxy directory '"+galaxy+"' (y/n)?: "))
 				if ('y' in choice.lower()): # make new directory for this folder
-					os.system('mkdir '+ dir_str+galaxy)
+					os.system('mkdir '+ '"'+dir_str+galaxy+'"')
 					dir_str = dir_str + galaxy
+					catch = True; break
 				elif ('n' in choice.lower()): # don't make new directory -> ABORT
 					print "\n    -- ABORTING --   "; exit()
 	
@@ -103,19 +106,20 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 	found_filenames = []
 	gal_files = os.listdir(dir_str)
 	for file_name in gal_files:
-		if ('cutout' in file_name and freq in file_name):
+		if ("cutout" in file_name and freq in file_name):
 			found_filenames.append(file_name)
 	if (len(found_filenames) == 1): # if only one appropriate file found
 		print "  ** Found .fits file: ", found_filenames[0], " **"
-		filename = dir_str + '\\' + found_filenames[0]
+		filename = dir_str + "\\" + found_filenames[0]
 	elif (len(found_filenames) > 1): # if multiple appropriate files found
-		for kk in range(len(found_filenames)): print " ",str(kk+1)," - ",found_filenames[kk]
+		print "  ** Multiple ({0}) files found  ** ".format(len(found_filenames))
+		for kk in range(len(found_filenames)): print "   [{0}]: {1}".format((kk+1),found_filenames[kk])
 		while True:
-			choice = raw_input(" >> Choose file: ")
+			choice = raw_input("\n >> Choose file: ")
 			try:
 				choice = int(choice)
-				if (choice >= 1 and choice <= len(found_filename)):
-					filename = dir_str + '\\' + found_filename[choice-1]; break
+				if (choice >= 1 and choice <= len(found_filenames)):
+					filename = dir_str + '\\' + found_filenames[choice-1]; break
 				else:
 					print "  ** ERROR: input out of bounds **  "
 			except ValueError:
@@ -126,7 +130,9 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 		while True:
 			choice = str(raw_input(" >> Download (y/n)?: "))
 			if ('y' in choice.lower()): # download cutout
-				filename = get_cutout(ra, dec, freq, ang_diam, download_dir=dir_str, listf=False)
+				DL_filename = get_cutout(ra, dec, freq, ang_diam, download_dir=dir_str, listf=False)
+				filename = dir_str + '\\' + "GLEAM_cutout_"+freq+"_"+galaxy+".fits"
+				os.system("rename "+'"'+DL_filename+'"'+" "+'"'+"GLEAM_cutout_"+freq+"_"+galaxy+".fits"+'"')
 				break
 			elif ('n' in choice.lower()): # don't download cutout -> ABORT
 				print "\n -- ABORTING --   "; exit()
@@ -160,7 +166,7 @@ def get_frequency(freq):
 
 	return freq
 	
-def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
+def check_for_file(head, RA, DEC, ang_diam, in_freq="N/A"):
 	"""
 	Check whether a file already exists in current directory
 	
@@ -173,11 +179,51 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
 	:return filename: the filename and path of the found file
 	"""
 
-	if (verbose): print "\n  ** Searching for pre-existing data file **"
-	filename = None
-	snippet = False
-	catch = False
-	# Searching for filenames of form "GLEAM_chunk_{RA}_{DEC}_{ang_diam}.fits" and encompass input position.
+	if (verbose): print "\n  ** Searching for pre-existing {0} data file **".format("chunk" if in_freq=="N/A" else "snippet")
+	
+	# Searching for filenames of form "GLEAM_[chunk/snippet]_{RA}_{DEC}_{ang_diam}_{freq?}.fits" .
+	found_filenames = []
+	for filename in os.listdir(head):
+		if (in_freq=="N/A"): # user is looking for a GLEAM_chunk
+			if (".fits" in filename and "chunk" in filename):
+				(RA_file,DEC_file,ang_diam_file) = filename.replace(".fits","").split("_")[2:]
+				RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam_file = float(ang_diam_file)	
+				if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file):
+					found_filenames.append(filename)						
+		else: # user is looking for a GLEAM_snippet
+			if (".fits" in filename and "snippet" in filename):
+				(RA_file,DEC_file,ang_diam_file,freq_file) = filename.replace(".fits","").split("_")[2:]
+				RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam_file = float(ang_diam_file); freq_file = str(freq_file)	
+				if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file and freq_file == in_freq):
+					found_filenames.append(filename)
+	
+	if (len(found_filenames) == 1):
+		if (verbose): print "  ** Found pre-existing file '{0}' ** ".format(found_filenames[0])
+		return head + "\\" + found_filenames[0]
+	elif (len(found_filenames) > 1):
+		print "  ** Multiple ({0}) pre-existing files found  ** ".format(len(found_filenames))
+		for kk in range(len(found_filenames)): print "   [{0}]: {1}".format((kk+1),found_filenames[kk])
+		while True:
+			choice = raw_input("\n >> Choose file: ")
+			try:
+				choice = int(choice)
+				if (choice > 0 and choice <= len(found_filenames)):
+					if (verbose): print "  ** Using file: '...\\{0}\\{1}' ** ".format(head.split("\\")[-1],found_filenames[choice-1])
+					return head + "\\" + found_filenames[choice-1] 
+					break
+				else:
+					print "  ** ERROR: input out of bounds **  "
+			except ValueError:
+				print "  ** ERROR: invalid input **  "
+	else:
+		print "  ** WARNING: no appropriate files found - Returning 'None' ** "
+		return None
+		# run chunk creation process
+	
+		
+		
+	"""
+	
 	for search_filename in os.listdir(head):
 		if (catch == True):
 			break
@@ -186,6 +232,7 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
 				(RA_file,DEC_file,ang_diam_file,freq_file) = search_filename.replace('.fits','').split('_')[2:]
 				snippet = True
 			except ValueError:
+				print "search filename: {0}".format(search_filename)
 				(RA_file,DEC_file,ang_diam_file) = search_filename.replace('.fits','').split('_')[2:]
 			
 			RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam_file = float(ang_diam_file)
@@ -208,13 +255,15 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
 						catch = True
 					elif (choice == 'n' or choice == 'N'):
 						print " ** Searching for other files ** "
+						catch = True
 					else:
 						print " ** invalid choice ** "
 	if (catch == False):
 		print "  ** No files pre-existing with appropriate positional parameters ** "
 		
 	return filename
-
+	"""
+	
 def read_data(filename, RA, DEC, ang_diam, head):
 	"""
 	Read data from file.
@@ -400,7 +449,7 @@ def run_Aegean(input_fits_name, input_table_name, RA, DEC, ang_diam, freq, head)
 	
 	out_filename = 'GLEAM_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+freq
 	
-	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"'+' --floodclip=3' + ' --autoload' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
 	
 def run_AeRes(fits_filename, catalog_filename, c_freq, head, base):
 	"""
@@ -453,7 +502,7 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 			if (choice in freq_ref): freqs = freq_ref[central_freq]; break
 			else: print "\n  ** ERROR: invalid choice **  "
 	
-	print "\n <Downloading .fits file>"
+	if (verbose): print "\n <Downloading .fits file>"
 	gvp = GleamVoProxy() # start the gleam proxy // gvp = GleamVoProxy(p_port=7799)
 	gvp.start()
 
@@ -492,36 +541,36 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 def main():
 	usage = "usage: %prog [options] "
 	parser = OptionParser(usage=usage)
-	parser.add_option("-n", "--fits_filename", 
-					  action="store",type="string",dest="fits_filename",default=None,
+	parser.add_option('-n', '--fits_filename', 
+					  action='store',type='string',dest='fits_filename',default=None,
 					  help=".fits file name", metavar="FITS_FILE")
-	parser.add_option("-g","--galaxy",
-					  action="store", type="string", dest="galaxy_name",default=None,
+	parser.add_option('-g','--galaxy',
+					  action='store', type='string', dest='galaxy_name',default=None,
 					  help="The name of the Dwarf galaxy",metavar="GALAXY_NAME")
-	parser.add_option("-q", "--quiet",
-					  action="store_false", dest="verbose", default=True,
+	parser.add_option('-q', '--quiet',
+					  action='store_false', dest='verbose', default=True,
 					  help="don't print status messages to stdout")
-	parser.add_option("-v","--verbose",
-					  action="store_true", dest="verbose",default=False,
+	parser.add_option('-v','--verbose',
+					  action='store_true', dest='verbose',default=False,
 					  help="print status messages to stdout")
-	parser.add_option("-f", "--central_freq", 
-					  action="store",type="string",dest="central_freq", default='deep',
+	parser.add_option('-f', '--central_freq', 
+					  action='store',type='string',dest='central_freq', default="deep",
 					  help="provide central frequency (MHz)", metavar="FREQUENCY")
-	parser.add_option("-i","--datafile",
-					  action="store", dest="data_filename", 
+	parser.add_option('-i','--datafile',
+					  action='store', dest='data_filename', 
 					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\GLEAMIDR3.csv",
 					  help="destination of input table for sources",metavar="SOURCES_FILE")
-	parser.add_option("-r","--ra",
-					  action="store", type="float", dest="ra_map",default=None,
+	parser.add_option('-r','--ra',
+					  action='store', type='float', dest='ra_map',default=None,
 					  help="right ascension of the image",metavar="RA")
-	parser.add_option("-d","--dec",
-					  action="store", type="float", dest="dec_map",default=None,
+	parser.add_option('-d','--dec',
+					  action='store', type='float', dest='dec_map',default=None,
 					  help="declination of the image",metavar="DEC")
-	parser.add_option("-a","--angular_diameter",
-					  action="store", type="float", dest="ang_diameter",default=2.0,
+	parser.add_option('-a','--angular_diameter',
+					  action='store', type='float', dest='ang_diameter',default=2.0,
 					  help="angular diameter of the sides of the image",metavar="ANGULAR_DIAMETER")
-	parser.add_option("-b","--base",
-					  action="store", type="string", dest="base_name",default=None,
+	parser.add_option('-b','--base',
+					  action='store', type='string', dest='base_name',default=None,
 					  help="The base name for the output Aegean formatted table")
 	
 	
@@ -569,31 +618,24 @@ def main():
 	if (verbose): print "\n  ** Using .fits file name: '.../"+tail+"' ** "
 	
 	if (options.base_name == None):
-		base = tail.replace('.fits','')
+		base = tail.replace('.fits','') if (options.galaxy_name==None) else options.galaxy_name
 	else:
 		base = options.base_name
 	
 	# check if c_freq is RGB freq band -> in which case, need to generate table of found sources in .fits image by running Aegean
 	if ((options.central_freq).lower() in ['red','r','green','g','blue','b']):
-		run_BANE(fits_filename)
-		
-		# Standardise central_freq output
-		# Now redundant
-		if ((options.central_freq).lower() in ['red','r']):
-			options.central_freq = 'red'
-		elif ((options.central_freq).lower() in ['green','g']):
-			options.central_freq = 'green'
-		elif ((options.central_freq).lower() in ['blue','b']):
-			options.central_freq = 'blue'
-			
-		if (verbose): print '\n  ** Stacked frequency band: '+options.central_freq+' chosen **  '
-		
-		deep_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),'deep')
+		# run_BANE(fits_filename) *BANE.py does not work on windows ~Paul Hancock
+
+		if (verbose): print "\n  ** Stacked frequency band: '{0}' chosen **  ".format(options.central_freq)
+		deep_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),"deep")
 		
 		if (deep_filename == None):
 			# in future, do not exit -> rather automatically run through ReSId process and generate _deep snippet
-			print '\n  ** Warning: No _deep GLEAM_snippet_...fits exists for this field **  \n  ** Please run ReSId.py with -central_freq=deep **\n   -- ABORTING --  '
+			print "\n  ** Warning: No _deep GLEAM_snippet_...fits exists for this field **  \n  ** Please run ReSId.py with -central_freq=deep **\n   -- ABORTING --  "
 			exit()
+		
+		
+		exit()
 		
 		run_Aegean(fits_filename,deep_filename,str(options.ra_map),str(options.dec_map),str(options.ang_diameter),options.central_freq,head)
 		in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)

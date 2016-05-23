@@ -78,29 +78,29 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 	
 	:return: The .fits file name and path
 	"""
-	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '"+galaxy+"' **"
+	if (verbose): print "\n <Searching for .fits file>\n\n  ** Searching for galaxy: '{0}' **".format(galaxy)
 	
-	dir_str = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'
-	
+	dir_str = "C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\" # root directory for DSph galaxy images
 	# look for directories with the name of the galaxy given
 	catch = False
-	gal_dirs = os.listdir(dir_str)	
-	for dir_name in gal_dirs:
+	gal_dirs = os.listdir(dir_str)
+	for dir_name in gal_dirs: # iterate over all galaxy directories
 		if (catch): break
 		if (dir_name == galaxy):
-			print "  ** Found directory: '",galaxy,"' **  \n"
+			if (verbose): print "  ** Found directory: '{0}' **  \n".format(galaxy)
 			dir_str = dir_str + dir_name
 			break
 		else:
-			print "\n  ** WARNING: no directory '",galaxy,"' found **\n  "
+			print "\n  ** WARNING: no directory '{0}' found **\n  ".format(galaxy)
 			while True:
-				choice = str(raw_input(" >> Make new galaxy directory '"+galaxy+"' (y/n)?: "))
-				if ('y' in choice.lower()): # make new directory for this folder
-					os.system('mkdir '+ '"'+dir_str+galaxy+'"')
+				choice = str(raw_input(" >> Make new galaxy directory '{0}' (y/n)?: ".format(galaxy)))
+				if ("y" in choice.lower()): # make new directory for this folder
+					os.system("mkdir \"{0}\"".format(dir_str+galaxy))
+					print "  ** Directory: '{0}' has been created. **".format(galaxy)
 					dir_str = dir_str + galaxy
 					catch = True; break
-				elif ('n' in choice.lower()): # don't make new directory -> ABORT
-					print "\n    -- ABORTING --   "; exit()
+				elif ("n" in choice.lower()): # don't make new directory -> ABORT
+					if (verbose): print "\n    -- ABORTING --   "; exit()
 	
 	# look for files in galaxy directory with 'cutout' in their name
 	found_filenames = []
@@ -109,7 +109,7 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 		if ("cutout" in file_name and freq in file_name):
 			found_filenames.append(file_name)
 	if (len(found_filenames) == 1): # if only one appropriate file found
-		print "  ** Found .fits file: ", found_filenames[0], " **"
+		print "  ** Found .fits file: {0} **".format(found_filenames[0])
 		filename = dir_str + "\\" + found_filenames[0]
 	elif (len(found_filenames) > 1): # if multiple appropriate files found
 		print "  ** Multiple ({0}) files found  ** ".format(len(found_filenames))
@@ -119,7 +119,7 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 			try:
 				choice = int(choice)
 				if (choice >= 1 and choice <= len(found_filenames)):
-					filename = dir_str + '\\' + found_filenames[choice-1]; break
+					filename = dir_str + "\\" + found_filenames[choice-1]; break
 				else:
 					print "  ** ERROR: input out of bounds **  "
 			except ValueError:
@@ -129,14 +129,15 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 		print " ** Download cutout for '"+galaxy+"' using parameters: **\n    - RA: ",ra,"\n    - DEC: ",dec,"\n    - Angular diameter: ",ang_diam,"\n    - Frequency: ",freq
 		while True:
 			choice = str(raw_input(" >> Download (y/n)?: "))
-			if ('y' in choice.lower()): # download cutout
+			if ("y" in choice.lower()): # download cutout
 				DL_filename = get_cutout(ra, dec, freq, ang_diam, download_dir=dir_str, listf=False)
-				filename = dir_str + '\\' + "GLEAM_cutout_"+freq+"_"+galaxy+".fits"
-				os.system("rename "+'"'+DL_filename+'"'+" "+'"'+"GLEAM_cutout_"+freq+"_"+galaxy+".fits"+'"')
+				filename = dir_str + "\\" + "GLEAM_cutout_"+freq+"_"+galaxy+".fits"
+				os.system("rename \"{0}\" \"Gleam_cutout_{1}_{2}.fits\"".format(DL_filename,freq,galaxy))
 				break
-			elif ('n' in choice.lower()): # don't download cutout -> ABORT
+			elif ("n" in choice.lower()): # don't download cutout -> ABORT
 				print "\n -- ABORTING --   "; exit()
-			else: print "\n  ** ERROR: invalid input **  "
+			else: 
+				print "\n  ** ERROR: invalid input **  "
 				
 	return filename
 
@@ -179,7 +180,7 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq="N/A"):
 	:return filename: the filename and path of the found file
 	"""
 
-	if (verbose): print "\n  ** Searching for pre-existing {0} data file **".format("chunk" if in_freq=="N/A" else "snippet")
+	if (verbose): print "\n <Searching for pre-existing {0} data file> ".format("chunk" if in_freq=="N/A" else "snippet")
 	
 	# Searching for filenames of form "GLEAM_[chunk/snippet]_{RA}_{DEC}_{ang_diam}_{freq?}.fits" .
 	found_filenames = []
@@ -219,50 +220,7 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq="N/A"):
 		print "  ** WARNING: no appropriate files found - Returning 'None' ** "
 		return None
 		# run chunk creation process
-	
-		
-		
-	"""
-	
-	for search_filename in os.listdir(head):
-		if (catch == True):
-			break
-		if ('.fits' in search_filename and ('GLEAM_chunk' in search_filename or 'GLEAM_snippet' in search_filename)):	
-			try:
-				(RA_file,DEC_file,ang_diam_file,freq_file) = search_filename.replace('.fits','').split('_')[2:]
-				snippet = True
-			except ValueError:
-				print "search filename: {0}".format(search_filename)
-				(RA_file,DEC_file,ang_diam_file) = search_filename.replace('.fits','').split('_')[2:]
-			
-			RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam_file = float(ang_diam_file)
-			file_found = False
-			if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file):
-				file_found = True
-				if (snippet == True and freq_file != in_freq):
-					print 'ding'
-					file_found = False
-					
-			if (file_found == True):	
-				print "\n  ** Found pre-existing data file: ", search_filename, " **"
-				print "     - RA: ", RA_file, "\n     - DEC: ", DEC_file, "\n     - Angular diameter: ", ang_diam_file, "\n     - Frequency: ", in_freq
-				print "\n       Use this file? "
-				choice = '' # enter while loop
-				while (choice != 'y' and choice != 'n' and choice != 'Y' and choice != 'N'):
-					choice = str(raw_input(">> (y/n)?: "))
-					if (choice.lower() == 'y'):
-						filename = head + "\\" + search_filename
-						catch = True
-					elif (choice == 'n' or choice == 'N'):
-						print " ** Searching for other files ** "
-						catch = True
-					else:
-						print " ** invalid choice ** "
-	if (catch == False):
-		print "  ** No files pre-existing with appropriate positional parameters ** "
-		
-	return filename
-	"""
+
 	
 def read_data(filename, RA, DEC, ang_diam, head):
 	"""
@@ -490,6 +448,7 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 	
 	:return filename: the file name of the downloaded .fitsfile
 	"""
+	if (verbose): print "\n <Downloading .fits file>"
 	
 	freq_ref = {'076':'072-080','084':'080-088','092':'088-095','099':'095-103','107':'103-111','115':'111-118','122':'118-126','130':'126-134','143':'139-147','151':'147-154','158':'154-162','166':'162-170','174':'170-177','181':'177-185','189':'185-193','197':'193-200','204':'200-208','212':'208-216','220':'216-223','227':'223-231','red':'072-103','green':'103-134','blue':'139-170','deep':'170-231'}
 	try:
@@ -498,11 +457,10 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 		print " ** WARNING: no frequency '",freq,"' found **\n    Available frequencies: "
 		for ii in freq_ref: print '      - '+ii
 		while True:
-			choice = str(raw_input('\n >> Choose frequency: '))
+			choice = str(raw_input("\n >> Choose frequency: "))
 			if (choice in freq_ref): freqs = freq_ref[central_freq]; break
 			else: print "\n  ** ERROR: invalid choice **  "
 	
-	if (verbose): print "\n <Downloading .fits file>"
 	gvp = GleamVoProxy() # start the gleam proxy // gvp = GleamVoProxy(p_port=7799)
 	gvp.start()
 
@@ -615,10 +573,10 @@ def main():
 
 		
 	head, tail = ntpath.split(fits_filename)
-	if (verbose): print "\n  ** Using .fits file name: '.../"+tail+"' ** "
+	if (verbose): print "  ** Using .fits file: '.../"+tail+"' ** "
 	
 	if (options.base_name == None):
-		base = tail.replace('.fits','') if (options.galaxy_name==None) else options.galaxy_name
+		base = tail.replace(".fits","") if (options.galaxy_name==None) else options.galaxy_name
 	else:
 		base = options.base_name
 	

@@ -61,44 +61,77 @@ def find_filename(filename):
 				print " ** invalid choice ** "
 		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[file_choice-1]
 	else:
-		print " ** No .fits files found with name '", filename,"' **\n   -- ABORTING --   "
+		print " ** No .fits files found with name '", filename,"' **\n    -- ABORTING --   "
 		exit()
 		
 	return filename
 	
-def find_gal_filename(filename):
+def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 	"""
 	Find .fits file in directory for a dwarf galaxy
 	
 	:param filename: The name of the fits file to be searched for
+	:param RA: right ascension of the map
+	:param DEC: declination of the map
+	:param ang_diam: angular diameter of the fits image
+	:param freq: the frequency of the image
 	
 	:return: The .fits file name and path
 	"""
-	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '"+filename+"' **"
+	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '"+galaxy+"' **"
 
+	dir_str = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'
+	
+	# look for directories with the name of the galaxy given
+	gal_dirs = os.listdir(dir_str)	
+	for dir_name in gal_dirs:
+		if (dir_name == galaxy):
+			print "  ** Found directory: '",galaxy,"' **  \n"
+			dir_str = dir_str + dir_name
+			break
+		else:
+			print "\n  ** WARNING: no directory '",galaxy,"' found **\n  "
+			while True:
+				choice = str(raw_input(" >> Make new galaxy directory '"+galaxy+"' (y/n)?: "))
+				if ('y' in choice.lower()): # make new directory for this folder
+					os.system('mkdir '+ dir_str+galaxy)
+					dir_str = dir_str + galaxy
+				elif ('n' in choice.lower()): # don't make new directory -> ABORT
+					print "\n    -- ABORTING --   "; exit()
+	
+	# look for files in galaxy directory with 'cutout' in their name
 	found_filenames = []
-	dir_str = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images'
-	gal_dirs = os.listdir(dir_str)
-	for dir_filename in gal_dirs:
-		if (filename in dir_filename):
-			found_filenames.append(dir_filename)
-	if (len(found_filenames) == 1):
+	gal_files = os.listdir(dir_str)
+	for file_name in gal_files:
+		if ('cutout' in file_name and freq in file_name):
+			found_filenames.append(file_name)
+	if (len(found_filenames) == 1): # if only one appropriate file found
 		print "  ** Found .fits file: ", found_filenames[0], " **"
-		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[0]+'\\'+found_filenames[0]+'.fits'
-	elif (len(found_filenames) > 1):
-		print "  ** .fits files found: ** "
-		for kk in range(0,len(found_filenames)):
-			print " ", kk+1, " - ",found_filenames[kk]
-		file_choice = -1
-		while (file_choice < 1 or file_choice > len(found_filenames)):
-			file_choice = int(raw_input(">> Select file: "))
-			if (file_choice < 1 or file_choice > len(found_filenames)):
-				print " ** invalid choice ** "
-		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\'+found_filenames[file_choice-1]+'\\'+found_filenames[file_choice-1]+'.fits'
-	else:
-		print " ** No .fits files found with name '", filename,"' **\n   -- ABORTING --   "
-		exit()
-		
+		filename = dir_str + '\\' + found_filenames[0]
+	elif (len(found_filenames) > 1): # if multiple appropriate files found
+		for kk in range(len(found_filenames)): print " ",str(kk+1)," - ",found_filenames[kk]
+		while True:
+			choice = raw_input(" >> Choose file: ")
+			try:
+				choice = int(choice)
+				if (choice >= 1 and choice <= len(found_filename)):
+					filename = dir_str + '\\' + found_filename[choice-1]; break
+				else:
+					print "  ** ERROR: input out of bounds **  "
+			except ValueError:
+				print "  ** ERROR: invalid input **  "
+	else: # if no appropriate files found
+		print " ** WARNING: No GLEAM_cutout_.fits files found in '", galaxy,"' directory **"
+		print " ** Download cutout for '"+galaxy+"' using parameters: **\n    - RA: ",ra,"\n    - DEC: ",dec,"\n    - Angular diameter: ",ang_diam,"\n    - Frequency: ",freq
+		while True:
+			choice = str(raw_input(" >> Download (y/n)?: "))
+			if ('y' in choice.lower()): # download cutout
+				filename = get_cutout(ra, dec, freq, ang_diam, download_dir=dir_str, listf=False)
+				break
+			elif ('n' in choice.lower()): # don't download cutout -> ABORT
+				print "\n -- ABORTING --   "; exit()
+			else: print "\n  ** ERROR: invalid input **  "
+				
 	return filename
 
 def get_frequency(freq):
@@ -109,12 +142,9 @@ def get_frequency(freq):
 	
 	:return: 
 	freq: for numerical comparison
-	DL_freq: for use in downloading files from GLEAM postage stamp service
 	"""
 	
-	if (verbose): print " <Finding frequency range>"
-	freq_ref = {'076':'072-080','084':'080-088','092':'088-095','099':'095-103','107':'103-111','115':'111-118','122':'118-126','130':'126-134','143':'139-147','151':'147-154','158':'154-162','166':'162-170','174':'170-177','181':'177-185','189':'185-193','197':'193-200','204':'200-208','212':'208-216','220':'216-223','227':'223-231','red':'072-103','green':'103-134','blue':'139-170','deep':'170-231'}
-	
+	if (verbose): print " <Finding frequency range>"	
 	if ('mhz' in freq.lower()): freq = freq.lower().replace('mhz','')
 	if (len(freq) == 2): # check if this is a valid 2 digit input, if so add a zero prefix
 		try:
@@ -127,17 +157,8 @@ def get_frequency(freq):
 	if (freq.lower() in ['blue','b']): freq = 'blue'
 	if (freq.lower() in ['white','deep','wide','w']): freq = 'deep'
 	
-	try:
-		DL_freq = freq_ref[freq]
-	except KeyError:
-		print " ** WARNING: no frequency '",freq,"' found **\n    Available frequencies: "
-		for ii in freq_ref: print '     - '+ii
-		while True:
-			choice = str(raw_input('\n>> Choose frequency: '))
-			if (choice in freq_ref): freq = choice; DL_freq = freq_ref[freq]; break
-			else: print "  ** WARNING: invalid choice **"
 
-	return [freq, DL_freq]
+	return freq
 	
 def check_for_file(head, RA, DEC, ang_diam, in_freq='N/A'):
 	"""
@@ -213,7 +234,7 @@ def read_data(filename, RA, DEC, ang_diam, head):
 	"""
 	# function should check for existing filename outside of this function, i.e. in main()
 	
-	if (verbose): print ' <Reading in data>'
+	if (verbose): print '\n <Reading in data>'
 	
 	# this needs some cleaning up
 	found_filename = check_for_file(head,RA,DEC,ang_diam)
@@ -379,7 +400,7 @@ def run_Aegean(input_fits_name, input_table_name, RA, DEC, ang_diam, freq, head)
 	
 	out_filename = 'GLEAM_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+freq
 	
-	print 'python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"'+' --floodclip=3' + ' --autoload' + ' --telescope=MWA ' + '"'+input_fits_name+'"'
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"'+' --floodclip=3' + ' --autoload' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
 	
 def run_AeRes(fits_filename, catalog_filename, c_freq, head, base):
 	"""
@@ -405,55 +426,67 @@ def run_BANE(fits_filename):
 	if (verbose): print "\n <Running BANE.py>"
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\BANE.py'+'"' + ' ' + '"'+fits_filename+'"')
 	
-def get_cutout(access_url, ra, dec, central_freq, size=2.0, freqs=[], regrid=False, download_dir=None, listf=False):
-    """
-    Automatically download GLEAM images from the postage stamp server using the template code that Chen has written.
+	
+def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
+	"""
+	Automatically download GLEAM images from the postage stamp server using the template code that Chen has written.
 	This function was written in majority by Paul Hancock, Aug-2015.
     
-	:param access_url: the url for the GLEAM postage stamp service
 	:param ra: the centre RA of the map
 	:param dec: the centre DEC of the map
 	:param central_freq: central frequency of map; usage in file rename  
 	:param size: the angular diameter of the map
-	:param freqs: a list of length = 1, containing the frequency band to be downloaded
-	:param regrid: ?
 	:param download_dir: Directory for which to save .fits image to
 	:param listf: True/False depending on whether one wishes to print frequency list or not.
 	
 	:return filename: the file name of the downloaded .fitsfile
 	"""
 	
-    if (download_dir and (not os.path.exists(download_dir))):
-        print "Invalid download dir: {0}".format(download_dir)
-        return
-    from pyvo.dal import sia
-    svc = sia.SIAService(access_url) #start Simple Image Access service
-    pos = (ra, dec) # position
-    if (regrid):
-        images = svc.search(pos, size, grid_opt="regrid")
-    else:
-        images = svc.search(pos, size)
-        
-    if listf:
-        print "Available freq ranges are:"
-        for img in images:
-            print img.get('freq')
-        return
-    for img in images:
-        # for each mached image, download or print its frequency and access url
-        freq = img.get('freq')
-        # only process the frequencies of interest
-        if not freq in freqs:
-            continue
-        print ' ** Downloading **'
-        url = img.acref
-        if (download_dir):
-            download_file(url, ra, dec, freq, download_dir)
-        else:
-            print freq, url
+	freq_ref = {'076':'072-080','084':'080-088','092':'088-095','099':'095-103','107':'103-111','115':'111-118','122':'118-126','130':'126-134','143':'139-147','151':'147-154','158':'154-162','166':'162-170','174':'170-177','181':'177-185','189':'185-193','197':'193-200','204':'200-208','212':'208-216','220':'216-223','227':'223-231','red':'072-103','green':'103-134','blue':'139-170','deep':'170-231'}
+	try:
+		freqs = freq_ref[central_freq]
+	except KeyError: # this should actually be handled by get_frequency()
+		print " ** WARNING: no frequency '",freq,"' found **\n    Available frequencies: "
+		for ii in freq_ref: print '      - '+ii
+		while True:
+			choice = str(raw_input('\n >> Choose frequency: '))
+			if (choice in freq_ref): freqs = freq_ref[central_freq]; break
+			else: print "\n  ** ERROR: invalid choice **  "
+	
+	print "\n <Downloading .fits file>"
+	gvp = GleamVoProxy() # start the gleam proxy // gvp = GleamVoProxy(p_port=7799)
+	gvp.start()
+
+	if (download_dir and (not os.path.exists(download_dir))):
+		print "Invalid download dir: {0}".format(download_dir)
+		return
+	from pyvo.dal import sia
+	svc = sia.SIAService(gvp.access_url) #start Simple Image Access service
+	pos = (ra, dec) # position
+	images = svc.search(pos, size)
+	
+	if listf:
+		print "Available freq ranges are:"
+		for img in images:
+			print img.get('freq')
+		return
+	for img in images:
+		# for each mached image, download or print its frequency and access url
+		freq = img.get('freq')
+		# only process the frequencies of interest
+		if not freq in freqs:
+			continue
+		print ' ** Downloading **'
+		url = img.acref
+		if (download_dir):
+			download_file(url, ra, dec, freq, download_dir)
+		else:
+			print freq, url
 	
 	os.system('rename '+'"'+download_dir+'\\'+str(ra)+'_'+str(dec)+'_'+freqs+'.fits"'+' "GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits"')
 	return download_dir+'\\GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits'
+	
+	gvp.stop()
 	
 	
 def main():
@@ -501,15 +534,15 @@ def main():
 	(options, args) = parser.parse_args()	
 	global verbose; verbose = options.verbose
 	
-	(options.central_freq, DL_freq) = get_frequency(options.central_freq)
-	if (verbose): print "\n   Using Frequency values: \n    - Central = "+options.central_freq+'\n    - Range = ',DL_freq
+	options.central_freq = get_frequency(options.central_freq)
+	if (verbose): print "\n  ** Using frequency: "+options.central_freq," **  "
 
 	if (options.galaxy_name != None and options.fits_filename != None): 
-		print " ** WARNING: Both -g (--galaxy) and -f (--fitsfile) have been specified **\n   -- ABORTING --   "
+		print "\n ** WARNING: Both -g (--galaxy) and -f (--fitsfile) have been specified **\n   -- ABORTING --   "
 		exit()
 	
 	if (options.galaxy_name != None): # Galaxy FITS_Filename has been specified by user
-		fits_filename = find_gal_filename(options.galaxy_name)
+		fits_filename = find_gal_filename(options.galaxy_name, options.ra_map, options.dec_map, options.ang_diameter, options.central_freq)
 	else:
 		if (options.fits_filename != None): # FITS_Filename has been specified by user
 			fits_filename = find_filename(options.fits_filename)
@@ -521,14 +554,8 @@ def main():
 			while True:
 				choice = str(raw_input(">> (y/n)?: "))
 				if (choice.lower() == 'y'):
-					print "\n <Downloading .fits file>"
-					# start the gleam proxy
-					gvp = GleamVoProxy()
-					#gvp = GleamVoProxy(p_port=7799)
-					gvp.start()
 					(out_dir_head, out_dir_tail) = ntpath.split(options.data_filename)
-					fits_filename = get_cutout(gvp.access_url, options.ra_map, options.dec_map, options.central_freq, options.ang_diameter, DL_freq, download_dir=out_dir_head+'\\Downloads', listf=False)
-					gvp.stop()
+					fits_filename = get_cutout(options.ra_map, options.dec_map, options.central_freq, options.ang_diameter, download_dir=out_dir_head+'\\Downloads', listf=False)
 					break
 				elif (choice.lower() == 'n'):
 					print "  ** Not attempting to download .fits filename **\n\n   -- ABORTING --   "
@@ -569,6 +596,7 @@ def main():
 			exit()
 		
 		run_Aegean(fits_filename,deep_filename,str(options.ra_map),str(options.dec_map),str(options.ang_diameter),options.central_freq,head)
+		in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 		
 	else: # user has not specified an RGB frequency band	
 		# read data from input table

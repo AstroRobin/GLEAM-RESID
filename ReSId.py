@@ -141,31 +141,6 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 				
 	return filename
 
-def get_frequency(freq):
-	"""
-	Standardizes the input frequency to one that ReSId can understand. Accepts many different input formats for frequency.
-	
-	:param freq: frequency input by the user
-	
-	:return: 
-	freq: for numerical comparison
-	"""
-	
-	if (verbose): print " <Finding frequency range>"	
-	if ('mhz' in freq.lower()): freq = freq.lower().replace('mhz','')
-	if (len(freq) == 2): # check if this is a valid 2 digit input, if so add a zero prefix
-		try:
-			if (int(freq) < 72): print "  ** WARNING: input frequency out of range **\n   -- ABORTING --   "; exit()
-			else: freq = '0'+freq
-		except ValueError:
-			print "  ** WARNING: input frequency not a number **"
-	if (freq.lower() in ['red','r']): freq = 'red'
-	if (freq.lower() in ['green','g']): freq = 'green'
-	if (freq.lower() in ['blue','b']): freq = 'blue'
-	if (freq.lower() in ['white','deep','wide','w']): freq = 'deep'
-	
-
-	return freq
 	
 def check_for_file(head, RA, DEC, ang_diam, in_freq="N/A"):
 	"""
@@ -193,7 +168,8 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq="N/A"):
 					found_filenames.append(filename)						
 		else: # user is looking for a GLEAM_snippet
 			if (".fits" in filename and "snippet" in filename):
-				(RA_file,DEC_file,ang_diam_file,freq_file) = filename.replace(".fits","").split("_")[2:]
+				print 'ding: ',filename
+				(RA_file,DEC_file,ang_diam_file,freq_file) = filename.replace(".fits","").split("_")[2:6]
 				RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam_file = float(ang_diam_file); freq_file = str(freq_file)	
 				if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file and freq_file == in_freq):
 					found_filenames.append(filename)
@@ -220,7 +196,34 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq="N/A"):
 		print "  ** WARNING: no appropriate files found - Returning 'None' ** "
 		return None
 		# run chunk creation process
+		
+		
 
+def get_frequency(freq):
+	"""
+	Standardizes the input frequency to one that ReSId can understand. Accepts many different input formats for frequency.
+	
+	:param freq: frequency input by the user
+	
+	:return: 
+	freq: for numerical comparison
+	"""
+	
+	if (verbose): print " <Finding frequency range>"	
+	if ('mhz' in freq.lower()): freq = freq.lower().replace('mhz','')
+	if (len(freq) == 2): # check if this is a valid 2 digit input, if so add a zero prefix
+		try:
+			if (int(freq) < 72): print "  ** WARNING: input frequency out of range **\n   -- ABORTING --   "; exit()
+			else: freq = '0'+freq
+		except ValueError:
+			print "  ** WARNING: input frequency not a number **"
+	if (freq.lower() in ['red','r']): freq = 'red'
+	if (freq.lower() in ['green','g']): freq = 'green'
+	if (freq.lower() in ['blue','b']): freq = 'blue'
+	if (freq.lower() in ['white','deep','wide','w']): freq = 'deep'
+	
+
+	return freq
 	
 def read_data(filename, RA, DEC, ang_diam, head):
 	"""
@@ -402,11 +405,9 @@ def run_Aegean(input_fits_name, input_table_name, RA, DEC, ang_diam, freq, head)
 	:param freq: central frequency of the data
 	:param head: the path to the input source table
 	"""
-	
 	if (verbose): print "\n <Running Aegean.py>"
 	
 	out_filename = 'GLEAM_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+freq
-	
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
 	
 def run_AeRes(fits_filename, catalog_filename, c_freq, head, base):
@@ -583,7 +584,6 @@ def main():
 	# check if c_freq is RGB freq band -> in which case, need to generate table of found sources in .fits image by running Aegean
 	if ((options.central_freq).lower() in ['red','r','green','g','blue','b']):
 		# run_BANE(fits_filename) *BANE.py does not work on windows ~Paul Hancock
-
 		if (verbose): print "\n  ** Stacked frequency band: '{0}' chosen **  ".format(options.central_freq)
 		deep_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),"deep")
 		
@@ -592,26 +592,17 @@ def main():
 			print "\n  ** Warning: No _deep GLEAM_snippet_...fits exists for this field **  \n  ** Please run ReSId.py with -central_freq=deep **\n   -- ABORTING --  "
 			exit()
 		
-		
-		exit()
-		
 		run_Aegean(fits_filename,deep_filename,str(options.ra_map),str(options.dec_map),str(options.ang_diameter),options.central_freq,head)
-		in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
-		
+		os.system("rename \"{0}\\Gleam_snippet_{1}_{2}_{3}_{4}_comp.fits\" \"Gleam_snippet_{1}_{2}_{3}_{4}.fits\"".format(head,options.ra_map,options.dec_map,options.ang_diameter,options.central_freq))
+		os.system("rename \"{0}\\Gleam_snippet_{1}_{2}_{3}_{4}_comp.reg\" \"Gleam_snippet_{1}_{2}_{3}_{4}.reg\"".format(head,options.ra_map,options.dec_map,options.ang_diameter,options.central_freq))
 	else: # user has not specified an RGB frequency band	
 		# read data from input table
 		in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
 	
 	# Possibly merge below file search into check_for_file() function
-	catch = False
-	for search_filename in os.listdir(head):
-		if (catch): break
-		if (("GLEAM_snippet_"+str(options.ra_map)+"_"+str(options.dec_map)+"_"+str(options.ang_diameter)+"_"+options.central_freq+".fits") == search_filename):
-			print "\n  ** GLEAM_snippet data file already exists: **  \n "
-			catalog_filename = head + "\\GLEAM_snippet_"+str(options.ra_map)+"_"+str(options.dec_map)+"_"+str(options.ang_diameter)+"_"+options.central_freq+".fits"
-			catch = True
-	if (catch == False):
+	snippet_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),options.central_freq)
+	if (snippet_filename == None):
 		# Extract sources which are constrained by input RA/DEC and ang_diam
 		source_data = extract_sources(in_data,options.ra_map,options.dec_map,options.ang_diameter,head)
 		

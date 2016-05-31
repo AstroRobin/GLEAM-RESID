@@ -29,6 +29,28 @@ from progressbar import ProgressBar, Bar, Percentage
 from gleam_vo_example import GleamVoProxy, download_file
 import pyvo
 
+def choose():
+	"""
+	Given a list of filenames, this function will list all filenames in a formatted order and prompt the user to select a file
+	
+	<param: filenames> - a list of filenames
+	
+	<return: filename> - the chosen filename
+	"""
+	
+	for kk in range(0,len(filenames)): print " {0} - {1}".format(kk+1,filenames[kk])
+	while True:
+			choice = raw_input("\n >> Choose file: ")
+			try:
+				choice = int(choice)
+				if (choice >= 1 and choice <= len(filenames)):
+					return filenames[choice-1]; break
+				else:
+					print "  ** ERROR: input out of bounds **  "
+			except ValueError:
+				print "  ** ERROR: invalid input **  "
+	
+
 def find_filename(search_path):
 	"""
 	Find .fits file in directory.
@@ -37,30 +59,19 @@ def find_filename(search_path):
 	
 	:return: The .fits file name and path
 	"""
-	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '{0}' **".format(filename)
-	
 	dir, filename = ntpath.split(search_path)
-	
+	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '{0}' in .../{1[0]}/{1[1]} **".format(filename,dir.split('\\')[-2:])
+		
 	found_filenames = []
-	for file in os.listdir(dir_str):
+	for file in os.listdir(dir):
 		if filename in file:
 			found_filenames.append(filename)
 	if (len(found_filenames) == 1):
-		print " ** Found .fits file: {0} **".format(found_filenames[0])
+		print "  ** Found .fits file: {0} **".format(found_filenames[0])
 		filename = dir + '\\' + found_filenames[0]
 	elif (len(found_filenames) > 1):
 		print " ** Found multiple ({0}) .fits files ** ".format(len(found_filenames))
-		for kk in range(0,len(found_filenames)): print " {0} - {1}".format(kk+1,found_filenames[kk])
-		while True:
-			choice = raw_input("\n >> Choose file: ")
-			try:
-				choice = int(choice)
-				if (choice >= 1 and choice <= len(found_filenames)):
-					filename = dir + '\\' + found_filenames[choice-1]; break
-				else:
-					print "  ** ERROR: input out of bounds **  "
-			except ValueError:
-				print "  ** ERROR: invalid input **  "
+		filename = dir + '\\' + choose(found_filenames)
 	else:
 		print " ** No .fits files found with name '", filename,"' **\n    -- ABORTING --   "
 		exit()
@@ -81,59 +92,50 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 	"""
 	if (verbose): print "\n <Searching for .fits file>\n\n  ** Searching for galaxy: '{0}' **".format(galaxy)
 	
-	dir_str = "C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\" # root directory for DSph galaxy images
+	dir = "C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\" # root directory for DSph galaxy images
 	# look for directories with the name of the galaxy given
 	catch = False
-	gal_dirs = os.listdir(dir_str)
+	gal_dirs = os.listdir(dir)
 	for dir_name in gal_dirs: # iterate over all galaxy directories
 		if (catch): break
 		if (dir_name == galaxy):
 			if (verbose): print "  ** Found directory: '{0}' **  \n".format(galaxy)
-			dir_str = dir_str + dir_name
+			dir = dir + dir_name
 			catch = True; break
 	if (catch == False):
 		print "\n  ** WARNING: no directory '{0}' found **\n  ".format(galaxy)
 		while True:
 			choice = str(raw_input(" >> Make new galaxy directory '{0}' (y/n)?: ".format(galaxy)))
 			if ("y" in choice.lower()): # make new directory for this folder
-				os.system("mkdir \"{0}\"".format(dir_str+galaxy))
+				os.system("mkdir \"{0}\"".format(dir+galaxy))
 				print "  ** Directory: '{0}' has been created. **".format(galaxy)
-				dir_str = dir_str + galaxy
+				dir = dir + galaxy
 				catch = True; break
 			elif ("n" in choice.lower()): # don't make new directory -> ABORT
 				if (verbose): print "\n    -- ABORTING --   "; exit()
 	
+	
 	# look for files in galaxy directory with 'cutout' in their name
+	if (verbose): print "  ** Searching for 'GLEAM_cutout' in '.../{0}' ** ".format(dir.split('\\')[-1])
 	found_filenames = []
-	gal_files = os.listdir(dir_str)
+	gal_files = os.listdir(dir)
 	for file_name in gal_files:
-		print file_name
 		if ("cutout" in file_name and freq in file_name):
 			found_filenames.append(file_name)
 	if (len(found_filenames) == 1): # if only one appropriate file found
 		print "  ** Found .fits file: {0} **".format(found_filenames[0])
-		filename = dir_str + "\\" + found_filenames[0]
+		filename = dir + '\\' + found_filenames[0]
 	elif (len(found_filenames) > 1): # if multiple appropriate files found
 		print "  ** Multiple ({0}) files found  ** ".format(len(found_filenames))
-		for kk in range(len(found_filenames)): print "   [{0}]: {1}".format((kk+1),found_filenames[kk])
-		while True:
-			choice = raw_input("\n >> Choose file: ")
-			try:
-				choice = int(choice)
-				if (choice >= 1 and choice <= len(found_filenames)):
-					filename = dir_str + "\\" + found_filenames[choice-1]; break
-				else:
-					print "  ** ERROR: input out of bounds **  "
-			except ValueError:
-				print "  ** ERROR: invalid input **  "
+		filename = dir + '\\' + choose(found_filenames)
 	else: # if no appropriate files found
-		print " ** WARNING: No GLEAM_cutout_.fits files found in '", galaxy,"' directory **"
-		print " ** Download cutout for '"+galaxy+"' using parameters: **\n    - RA: ",ra,"\n    - DEC: ",dec,"\n    - Angular diameter: ",ang_diam,"\n    - Frequency: ",freq
+		print " ** WARNING: No GLEAM_cutout_.fits files found in '{0}' directory **".format(galaxy)
+		print " ** Download cutout for '{0}' using parameters: **\n    - RA: {1}\n    - DEC: {2}\n    - Angular diameter: {3}\n    - Frequency: {4}".format(galaxy,ra,dec,ang_diam,freq)
 		while True:
 			choice = str(raw_input(" >> Download (y/n)?: "))
 			if ("y" in choice.lower()): # download cutout
-				DL_filename = get_cutout(ra, dec, freq, ang_diam, download_dir=dir_str, listf=False)
-				filename = dir_str + "\\" + "GLEAM_cutout_"+freq+"_"+galaxy+".fits"
+				DL_filename = get_cutout(ra, dec, freq, ang_diam, download_dir=dir, listf=False)
+				filename = "{0}\\GLEAM_cutout_{1}_{2}.fits".format(dir,freq,galaxy)
 				os.system("rename \"{0}\" \"Gleam_cutout_{1}_{2}.fits\"".format(DL_filename,freq,galaxy))
 				break
 			elif ("n" in choice.lower()): # don't download cutout -> ABORT
@@ -144,11 +146,11 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 	return filename
 
 	
-def check_for_file(head, RA, DEC, ang_diam, in_freq="N/A"):
+def check_for_file(dir, RA, DEC, ang_diam, in_freq="N/A"):
 	"""
 	Check whether a file already exists in current directory
 	
-	:param head: path for where to search for pre existing data tables
+	:param dir: path for where to search for pre existing data tables
 	:param RA: right ascension of the map
 	:param DEC: declination of the map
 	:param ang_diam: angular diameter of the fits image
@@ -161,7 +163,7 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq="N/A"):
 	
 	# Searching for filenames of form "GLEAM_[chunk/snippet]_{RA}_{DEC}_{ang_diam}_{freq?}.fits" .
 	found_filenames = []
-	for filename in os.listdir(head):
+	for filename in os.listdir(dir):
 		if (in_freq=="N/A"): # user is looking for a GLEAM_chunk
 			if (".fits" in filename and "chunk" in filename):
 				(RA_file,DEC_file,ang_diam_file) = filename.replace(".fits","").split("_")[2:]
@@ -177,22 +179,10 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq="N/A"):
 	
 	if (len(found_filenames) == 1):
 		if (verbose): print "  ** Found pre-existing file '{0}' ** ".format(found_filenames[0])
-		return head + "\\" + found_filenames[0]
+		return dir + '\\' + found_filenames[0]
 	elif (len(found_filenames) > 1):
 		print "  ** Multiple ({0}) pre-existing files found  ** ".format(len(found_filenames))
-		for kk in range(len(found_filenames)): print "   [{0}]: {1}".format((kk+1),found_filenames[kk])
-		while True:
-			choice = raw_input("\n >> Choose file: ")
-			try:
-				choice = int(choice)
-				if (choice > 0 and choice <= len(found_filenames)):
-					if (verbose): print "  ** Using file: '...\\{0}\\{1}' ** ".format(head.split("\\")[-1],found_filenames[choice-1])
-					return head + "\\" + found_filenames[choice-1] 
-					break
-				else:
-					print "  ** ERROR: input out of bounds **  "
-			except ValueError:
-				print "  ** ERROR: invalid input **  "
+		filename = dir + '\\' + choose(found_filenames)
 	else:
 		print "  ** WARNING: no appropriate files found - Returning 'None' ** "
 		return None
@@ -576,7 +566,7 @@ def main():
 
 		
 	head, tail = ntpath.split(fits_filename)
-	if (verbose): print "  ** Using .fits file: '.../{0}' ** ".format(tail)
+	if (verbose): print "\n  ** Using .fits file: '.../{0[0]}/{0[1]}/{0[2]}/{1}' ** ".format(head.split('\\')[-3:],tail)
 	
 	if (options.base_name == None):
 		base = tail.replace(".fits","") if (options.galaxy_name==None) else options.galaxy_name

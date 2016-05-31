@@ -29,37 +29,38 @@ from progressbar import ProgressBar, Bar, Percentage
 from gleam_vo_example import GleamVoProxy, download_file
 import pyvo
 
-def find_filename(filename):
+def find_filename(search_path):
 	"""
 	Find .fits file in directory.
 	
-	:param filename: The name of the fits file to be searched for
+	:param search_path: The name of the fits file (and path) to be searched for
 	
 	:return: The .fits file name and path
 	"""
-	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '"+filename+"' **"
+	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '{0}' **".format(filename)
+	
+	dir, filename = ntpath.split(search_path)
 	
 	found_filenames = []
-	dirs = ['CDFS','ELAIS_S1','COSMOS']
-	for ii in range(0,len(dirs)):
-		dir_str = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\'+dirs[ii]
-		for dir_filename in os.listdir(dir_str):
-			if ".fits" in dir_filename:
-				if filename in dir_filename:
-					found_filenames.append(dirs[ii]+'\\'+dir_filename)
+	for file in os.listdir(dir_str):
+		if filename in file:
+			found_filenames.append(filename)
 	if (len(found_filenames) == 1):
-		print " ** Found .fits file: ", found_filenames[0], " **"
-		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[0]
+		print " ** Found .fits file: {0} **".format(found_filenames[0])
+		filename = dir + '\\' + found_filenames[0]
 	elif (len(found_filenames) > 1):
-		print "  ** .fits files found: ** "
-		for kk in range(0,len(found_filenames)):
-			print " ", kk+1, " - ",found_filenames[kk]
-			file_choice = -1
-		while (file_choice < 1 or file_choice > len(found_filenames)):
-			file_choice = int(raw_input(">> Select file: "))
-			if (file_choice < 1 or file_choice > len(found_filenames)):
-				print " ** invalid choice ** "
-		filename = 'C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\' + found_filenames[file_choice-1]
+		print " ** Found multiple ({0}) .fits files ** ".format(len(found_filenames))
+		for kk in range(0,len(found_filenames)): print " {0} - {1}".format(kk+1,found_filenames[kk])
+		while True:
+			choice = raw_input("\n >> Choose file: ")
+			try:
+				choice = int(choice)
+				if (choice >= 1 and choice <= len(found_filenames)):
+					filename = dir + '\\' + found_filenames[choice-1]; break
+				else:
+					print "  ** ERROR: input out of bounds **  "
+			except ValueError:
+				print "  ** ERROR: invalid input **  "
 	else:
 		print " ** No .fits files found with name '", filename,"' **\n    -- ABORTING --   "
 		exit()
@@ -89,23 +90,24 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 		if (dir_name == galaxy):
 			if (verbose): print "  ** Found directory: '{0}' **  \n".format(galaxy)
 			dir_str = dir_str + dir_name
-			break
-		else:
-			print "\n  ** WARNING: no directory '{0}' found **\n  ".format(galaxy)
-			while True:
-				choice = str(raw_input(" >> Make new galaxy directory '{0}' (y/n)?: ".format(galaxy)))
-				if ("y" in choice.lower()): # make new directory for this folder
-					os.system("mkdir \"{0}\"".format(dir_str+galaxy))
-					print "  ** Directory: '{0}' has been created. **".format(galaxy)
-					dir_str = dir_str + galaxy
-					catch = True; break
-				elif ("n" in choice.lower()): # don't make new directory -> ABORT
-					if (verbose): print "\n    -- ABORTING --   "; exit()
+			catch = True; break
+	if (catch == False):
+		print "\n  ** WARNING: no directory '{0}' found **\n  ".format(galaxy)
+		while True:
+			choice = str(raw_input(" >> Make new galaxy directory '{0}' (y/n)?: ".format(galaxy)))
+			if ("y" in choice.lower()): # make new directory for this folder
+				os.system("mkdir \"{0}\"".format(dir_str+galaxy))
+				print "  ** Directory: '{0}' has been created. **".format(galaxy)
+				dir_str = dir_str + galaxy
+				catch = True; break
+			elif ("n" in choice.lower()): # don't make new directory -> ABORT
+				if (verbose): print "\n    -- ABORTING --   "; exit()
 	
 	# look for files in galaxy directory with 'cutout' in their name
 	found_filenames = []
 	gal_files = os.listdir(dir_str)
 	for file_name in gal_files:
+		print file_name
 		if ("cutout" in file_name and freq in file_name):
 			found_filenames.append(file_name)
 	if (len(found_filenames) == 1): # if only one appropriate file found
@@ -168,7 +170,6 @@ def check_for_file(head, RA, DEC, ang_diam, in_freq="N/A"):
 					found_filenames.append(filename)						
 		else: # user is looking for a GLEAM_snippet
 			if (".fits" in filename and "snippet" in filename):
-				print 'ding: ',filename
 				(RA_file,DEC_file,ang_diam_file,freq_file) = filename.replace(".fits","").split("_")[2:6]
 				RA_file = float(RA_file); DEC_file = float(DEC_file); ang_diam_file = float(ang_diam_file); freq_file = str(freq_file)	
 				if (RA - ang_diam >= RA_file - ang_diam_file and RA + ang_diam <= RA_file + ang_diam_file and DEC - ang_diam >= DEC_file - ang_diam_file and DEC + ang_diam <= DEC_file + ang_diam_file and freq_file == in_freq):
@@ -422,6 +423,7 @@ def run_AeRes(fits_filename, catalog_filename, c_freq, head, base):
 	"""
 	
 	if (verbose): print "\n <Running AeRes.py>"
+	print 'python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"'
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"')
 
 def run_BANE(fits_filename):
@@ -558,7 +560,7 @@ def main():
 			print "\n  ** No .fits filename specified **"
 			if (options.ra_map == None or options.dec_map == None): print "  ** WARNING: Must specify both RA and DEC **\n   -- ABORTING --   "; exit()
 			print "    Do you want to attempt downloading .fits file from < GLEAM Postage Stamp Service > using parameters: "
-			print "  - RA: ", options.ra_map,"\n  - DEC: ", options.dec_map,"\n  - Angular Diameter: ", options.ang_diameter, "\n  - Frequency: ", DL_freq, " MHz"
+			print "  - RA: ", options.ra_map,"\n  - DEC: ", options.dec_map,"\n  - Angular Diameter: ", options.ang_diameter, "\n  - Frequency: ", options.central_freq, " MHz"
 			while True:
 				choice = str(raw_input(">> (y/n)?: "))
 				if (choice.lower() == 'y'):
@@ -574,7 +576,7 @@ def main():
 
 		
 	head, tail = ntpath.split(fits_filename)
-	if (verbose): print "  ** Using .fits file: '.../"+tail+"' ** "
+	if (verbose): print "  ** Using .fits file: '.../{0}' ** ".format(tail)
 	
 	if (options.base_name == None):
 		base = tail.replace(".fits","") if (options.galaxy_name==None) else options.galaxy_name
@@ -593,16 +595,14 @@ def main():
 			exit()
 		
 		run_Aegean(fits_filename,deep_filename,str(options.ra_map),str(options.dec_map),str(options.ang_diameter),options.central_freq,head)
-		os.system("rename \"{0}\\Gleam_snippet_{1}_{2}_{3}_{4}_comp.fits\" \"Gleam_snippet_{1}_{2}_{3}_{4}.fits\"".format(head,options.ra_map,options.dec_map,options.ang_diameter,options.central_freq))
-		os.system("rename \"{0}\\Gleam_snippet_{1}_{2}_{3}_{4}_comp.reg\" \"Gleam_snippet_{1}_{2}_{3}_{4}.reg\"".format(head,options.ra_map,options.dec_map,options.ang_diameter,options.central_freq))
+		os.system("rename \"{0}\\GLEAM_snippet_{1}_{2}_{3}_{4}_comp.fits\" \"GLEAM_snippet_{1}_{2}_{3}_{4}.fits\"".format(head,options.ra_map,options.dec_map,options.ang_diameter,options.central_freq))
+		os.system("rename \"{0}\\GLEAM_snippet_{1}_{2}_{3}_{4}_comp.reg\" \"GLEAM_snippet_{1}_{2}_{3}_{4}.reg\"".format(head,options.ra_map,options.dec_map,options.ang_diameter,options.central_freq))
 	else: # user has not specified an RGB frequency band	
 		# read data from input table
 		in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
-	
-	# Possibly merge below file search into check_for_file() function
-	snippet_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),options.central_freq)
-	if (snippet_filename == None):
+	catalog_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),options.central_freq)
+	if (catalog_filename == None): # No '_snippet_' file was found
 		# Extract sources which are constrained by input RA/DEC and ang_diam
 		source_data = extract_sources(in_data,options.ra_map,options.dec_map,options.ang_diameter,head)
 		

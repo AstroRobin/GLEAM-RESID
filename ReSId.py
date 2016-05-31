@@ -29,7 +29,7 @@ from progressbar import ProgressBar, Bar, Percentage
 from gleam_vo_example import GleamVoProxy, download_file
 import pyvo
 
-def choose():
+def choose(filenames):
 	"""
 	Given a list of filenames, this function will list all filenames in a formatted order and prompt the user to select a file
 	

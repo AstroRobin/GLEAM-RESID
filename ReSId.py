@@ -65,7 +65,7 @@ def find_filename(search_path):
 	found_filenames = []
 	for file in os.listdir(dir):
 		if filename in file:
-			found_filenames.append(filename)
+			found_filenames.append(file)
 	if (len(found_filenames) == 1):
 		print "  ** Found .fits file: {0} **".format(found_filenames[0])
 		filename = dir + '\\' + found_filenames[0]
@@ -211,7 +211,7 @@ def get_frequency(freq):
 	if (freq.lower() in ['red','r']): freq = 'red'
 	if (freq.lower() in ['green','g']): freq = 'green'
 	if (freq.lower() in ['blue','b']): freq = 'blue'
-	if (freq.lower() in ['white','deep','wide','w']): freq = 'deep'
+	if (freq.lower() in ['white','deep','wide','w']): freq = 'wide'
 	
 
 	return freq
@@ -310,6 +310,7 @@ def calc_peak_flux (a,b,psf_a,psf_b,int_flux,err_int_flux):
 	
 	:return: peak_flux and err_peak_flux
 	"""
+	# now redundant -> IDR4 has peak fluxes given.
 	
 	peak_flux = ((psf_a*psf_b)/(a*b))*int_flux
 	err_peak_flux = (peak_flux/int_flux)*err_int_flux
@@ -327,7 +328,7 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	:param ang_diam: angular diameter of the image
 	"param head: The path for the data 'snippet'; i.e. the Aegean formatted single frequency column table of the in_data
 	
-	:return: the filename of the catalog
+	:return: the filename of the catalogue
 	"""
 	
 	num_sources = len(in_data)
@@ -335,7 +336,7 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	
 	# Aegean requirement information
 	out_data['island'] = [kk for kk in range(1,num_sources+1)] #island: 1 -> num_sources
-	out_data['source'] = [0]*num_sources # source -> 0
+	out_data['source'] = [0]*num_sources # source = 0
 	
 	# Background rms information
 	out_data['background'] = in_data['background_'+c_freq] # background noise for this frequency band
@@ -347,24 +348,24 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	out_data['dec'] = in_data['DECJ2000']; out_data['err_dec'] = in_data['err_DECJ2000'] # DEC + DEC_err
 	
 	# Peak and integrated flux data
-	peak_flux_arr = [0]*num_sources; err_peak_flux_arr = [0]*num_sources
-	for ii in range(0,num_sources):
-		(peak_flux_arr[ii], err_peak_flux_arr[ii]) = calc_peak_flux(in_data['a_'+c_freq][ii],in_data['b_'+c_freq][ii],in_data['psf_a_'+c_freq][ii],in_data['psf_b_'+c_freq][ii],in_data['int_flux_'+c_freq][ii],in_data['err_fit_flux_'+c_freq][ii])
-	out_data['peak_flux'] = peak_flux_arr
-	out_data['err_peak_flux'] = err_peak_flux_arr
+	# peak_flux_arr = [0]*num_sources; err_peak_flux_arr = [0]*num_sources
+	# for ii in range(0,num_sources):
+	#	(peak_flux_arr[ii], err_peak_flux_arr[ii]) = calc_peak_flux(in_data['a_'+c_freq][ii],in_data['b_'+c_freq][ii],in_data['psf_a_'+c_freq][ii],in_data['psf_b_'+c_freq][ii],in_data['int_flux_'+c_freq][ii],in_data['err_fit_flux_'+c_freq][ii])
+	out_data['peak_flux'] = in_data['peak_flux_'+c_freq]
+	out_data['err_peak_flux'] = in_data['err_peak_flux_']
 	out_data['int_flux'] = in_data['int_flux_'+c_freq]
-	out_data['err_int_flux'] = in_data['err_fit_flux_'+c_freq]
+	out_data['err_int_flux'] = in_data['err_int_flux_'+c_freq]
 	
 	# Source shape information
 	out_data['a'] = in_data['a_'+c_freq]
-	out_data['err_a'] = 0.0 # no a_err given in GLEAMIDR3.fits
+	out_data['err_a'] = 0.0 # no a_err (8GHz) given in GLEAMIDR4.fits
 	out_data['b'] = in_data['b_'+c_freq]
-	out_data['err_b'] = 0.0 # no b_err given in GLEAMIDR3.fits
+	out_data['err_b'] = 0.0 # no b_err (8GHz) given in GLEAMIDR4.fits
 	out_data['pa'] = in_data['pa_'+c_freq]
-	out_data['err_pa'] = 0.0 # no pa_err given in GLEAMIDR3.fits
+	out_data['err_pa'] = 0.0 # no pa_err (8GHz) given in GLEAMIDR4.fits
 	
-	# Flags information
-	out_data['flags'] = in_data['flags_deep']
+	# Flags information -> not in IDR4
+	out_data['flags'] = 0
 	
 	# Residuals information
 	out_data['residual_mean'] = in_data['residual_mean_'+c_freq]
@@ -384,6 +385,22 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	out_data.write(filename,format='fits')
 	return filename
 
+def to_catalogue_table(filename):
+	"""
+	Writes Aegean table to catalogue format (.csv) for plotting
+	
+	<param: filename> - the filename of the catalogue
+	
+	<return: N/A>
+	"""
+	
+	catalogue_filename = filename.replace(".fits","_catalogue.csv")
+	if (verbose): print "\n <Writing catalogue to '.../{0[0]}/{0[1]}'>".format(catalogue_filename.split('\\')[-2:])
+	
+	data = Table.read(filename)
+	data.write(catalogue_filename,format='ascii.csv')
+	
+	
 def run_Aegean(input_fits_name, input_table_name, RA, DEC, ang_diam, freq, head):
 	"""
 	Runs Aegean.py source finding program by Paul Hancock. Outputs tables associated with the priorized source finding of the input .fits image
@@ -401,20 +418,20 @@ def run_Aegean(input_fits_name, input_table_name, RA, DEC, ang_diam, freq, head)
 	out_filename = 'GLEAM_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+freq
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
 	
-def run_AeRes(fits_filename, catalog_filename, c_freq, head, base):
+def run_AeRes(fits_filename, catalogue_filename, c_freq, head, base):
 	"""
 	Runs AeRes.py source subtracting program by Paul Hancock. Outputs a .fits image of the original image with the specified sources subtracted
 	
 	:param fits_filename: the file name of the fits file to have sources subtracted from
-	:param catalog_filename: the file name of the source catalog snippet in Aegean format
+	:param catalogue_filename: the file name of the source catalogue snippet in Aegean format
 	:param c_freq: the central frequency.
 	:param head: the path to the input source table
 	:param base: the base name of the file #not implemented
 	"""
 	
 	if (verbose): print "\n <Running AeRes.py>"
-	print 'python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"'
-	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"')
+	print 'python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalogue_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"'
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalogue_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"')
 
 def run_BANE(fits_filename):
 	"""
@@ -425,7 +442,6 @@ def run_BANE(fits_filename):
 	
 	if (verbose): print "\n <Running BANE.py>"
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\BANE.py'+'"' + ' ' + '"'+fits_filename+'"')
-	
 	
 def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 	"""
@@ -504,13 +520,16 @@ def main():
 	parser.add_option('-v','--verbose',
 					  action='store_true', dest='verbose',default=False,
 					  help="print status messages to stdout")
+	parser.add_option('-c','--catalogue',
+					  action='store_true', dest='catalogue',default=False,
+					  help="write to catalogue file")
+	parser.add_option('-i','--datafile',
+					  action='store', dest='data_filename', 
+					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR4\\GLEAMIDR4.fits",
+					  help="destination of input table for sources",metavar="SOURCES_FILE")
 	parser.add_option('-f', '--central_freq', 
 					  action='store',type='string',dest='central_freq', default="deep",
 					  help="provide central frequency (MHz)", metavar="FREQUENCY")
-	parser.add_option('-i','--datafile',
-					  action='store', dest='data_filename', 
-					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\GLEAMIDR3.csv",
-					  help="destination of input table for sources",metavar="SOURCES_FILE")
 	parser.add_option('-r','--ra',
 					  action='store', type='float', dest='ra_map',default=None,
 					  help="right ascension of the image",metavar="RA")
@@ -574,7 +593,7 @@ def main():
 		base = options.base_name
 	
 	# check if c_freq is RGB freq band -> in which case, need to generate table of found sources in .fits image by running Aegean
-	if ((options.central_freq).lower() in ['red','r','green','g','blue','b']):
+	if ((options.central_freq).lower() in ["red","r","green","g","blue","b"]):
 		# run_BANE(fits_filename) *BANE.py does not work on windows ~Paul Hancock
 		if (verbose): print "\n  ** Stacked frequency band: '{0}' chosen **  ".format(options.central_freq)
 		deep_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),"deep")
@@ -591,18 +610,18 @@ def main():
 		# read data from input table
 		in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
-	catalog_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),options.central_freq)
-	if (catalog_filename == None): # No '_snippet_' file was found
+	catalogue_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),options.central_freq)
+	if (catalogue_filename == None): # No '_snippet_' file was found
 		# Extract sources which are constrained by input RA/DEC and ang_diam
 		source_data = extract_sources(in_data,options.ra_map,options.dec_map,options.ang_diameter,head)
 		
 		# Convert source data to Aegean format table
-		catalog_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
-	
+		catalogue_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
+	if (options.catalogue): to_catalogue_table(catalogue_filename)
 		
-	#catalog_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
+	#catalogue_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
 	
 	# run AeRes.py
-	run_AeRes(fits_filename, catalog_filename, options.central_freq, head, base)
+	run_AeRes(fits_filename, catalogue_filename, options.central_freq, head, base)
 	
 main()

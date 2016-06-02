@@ -459,11 +459,11 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 	"""
 	if (verbose): print "\n <Downloading .fits file>"
 	
-	freq_ref = {'076':'072-080','084':'080-088','092':'088-095','099':'095-103','107':'103-111','115':'111-118','122':'118-126','130':'126-134','143':'139-147','151':'147-154','158':'154-162','166':'162-170','174':'170-177','181':'177-185','189':'185-193','197':'193-200','204':'200-208','212':'208-216','220':'216-223','227':'223-231','red':'072-103','green':'103-134','blue':'139-170','deep':'170-231'}
+	freq_ref = {'076':'072-080','084':'080-088','092':'088-095','099':'095-103','107':'103-111','115':'111-118','122':'118-126','130':'126-134','143':'139-147','151':'147-154','158':'154-162','166':'162-170','174':'170-177','181':'177-185','189':'185-193','197':'193-200','204':'200-208','212':'208-216','220':'216-223','227':'223-231','red':'072-103','green':'103-134','blue':'139-170','wide':'170-231'}
 	try:
 		freqs = freq_ref[central_freq]
 	except KeyError: # this should actually be handled by get_frequency()
-		print " ** WARNING: no frequency '",freq,"' found **\n    Available frequencies: "
+		print " ** WARNING: no frequency '",central_freq,"' found **\n    Available frequencies: "
 		for ii in freq_ref: print '      - '+ii
 		while True:
 			choice = str(raw_input("\n >> Choose frequency: "))

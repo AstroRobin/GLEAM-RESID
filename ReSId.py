@@ -277,7 +277,7 @@ def extract_sources(data, RA, DEC, ang_diam, head):
 	pbar = ProgressBar(widgets=['  ** Extracting sources: ', Percentage(), ' ', Bar(), ' ** '],maxval=num_sources).start()
 	for ii in range(0,num_sources):
 		pbar.update(ii+1)
-		if (data[ii]['RAJ2000'] >= RA - 0.5*ang_diam_buff and data[ii]['RAJ2000'] <= RA + 0.5*ang_diam_buff and data[ii]['DECJ2000'] >= DEC - 0.5*ang_diam_buff and data[ii]['DECJ2000'] <= DEC + 0.5*ang_diam_buff):
+		if (data[ii]['RAJ2000'] >= RA - 0.5*ang_diam_buff and data[ii]['RAJ2000'] <= RA + 0.5*ang_diam_buff and data[ii]['DEJ2000'] >= DEC - 0.5*ang_diam_buff and data[ii]['DEJ2000'] <= DEC + 0.5*ang_diam_buff):
 			source_data.add_row(data[ii])
 			found_sources += 1
 	pbar.finish()
@@ -345,14 +345,14 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	# Positional information
 	out_data['ra_str'] = in_data['ra_str']; out_data['dec_str'] = in_data['dec_str'] # RA/DEC Strings
 	out_data['ra'] = in_data['RAJ2000']; out_data['err_ra'] = in_data['err_RAJ2000'] # RA + RA_err
-	out_data['dec'] = in_data['DECJ2000']; out_data['err_dec'] = in_data['err_DECJ2000'] # DEC + DEC_err
+	out_data['dec'] = in_data['DEJ2000']; out_data['err_dec'] = in_data['err_DEJ2000'] # DEC + DEC_err
 	
 	# Peak and integrated flux data
 	# peak_flux_arr = [0]*num_sources; err_peak_flux_arr = [0]*num_sources
 	# for ii in range(0,num_sources):
 	#	(peak_flux_arr[ii], err_peak_flux_arr[ii]) = calc_peak_flux(in_data['a_'+c_freq][ii],in_data['b_'+c_freq][ii],in_data['psf_a_'+c_freq][ii],in_data['psf_b_'+c_freq][ii],in_data['int_flux_'+c_freq][ii],in_data['err_fit_flux_'+c_freq][ii])
 	out_data['peak_flux'] = in_data['peak_flux_'+c_freq]
-	out_data['err_peak_flux'] = in_data['err_peak_flux_']
+	out_data['err_peak_flux'] = in_data['err_peak_flux_'+c_freq]
 	out_data['int_flux'] = in_data['int_flux_'+c_freq]
 	out_data['err_int_flux'] = in_data['err_int_flux_'+c_freq]
 	
@@ -525,7 +525,7 @@ def main():
 					  help="write to catalogue file")
 	parser.add_option('-i','--datafile',
 					  action='store', dest='data_filename', 
-					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR4\\GLEAMIDR4.fits",
+					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR4\\GLEAMIDR4.csv",
 					  help="destination of input table for sources",metavar="SOURCES_FILE")
 	parser.add_option('-f', '--central_freq', 
 					  action='store',type='string',dest='central_freq', default="deep",

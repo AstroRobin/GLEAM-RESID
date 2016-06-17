@@ -29,6 +29,9 @@ from progressbar import ProgressBar, Bar, Percentage
 from gleam_vo_example import GleamVoProxy, download_file
 import pyvo
 
+# Hardcoding
+IDR_version = "4"
+
 def choose(filenames):
 	"""
 	Given a list of filenames, this function will list all filenames in a formatted order and prompt the user to select a file
@@ -60,7 +63,7 @@ def find_filename(search_path):
 	:return: The .fits file name and path
 	"""
 	dir, filename = ntpath.split(search_path)
-	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '{0}' in .../{1[0]}/{1[1]} **".format(filename,dir.split('\\')[-2:])
+	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '{0}' in .../{1[0]}/{1[1]} **".format(filename,dir.split("\\")[-2:])
 		
 	found_filenames = []
 	for file in os.listdir(dir):
@@ -68,10 +71,10 @@ def find_filename(search_path):
 			found_filenames.append(file)
 	if (len(found_filenames) == 1):
 		print "  ** Found .fits file: {0} **".format(found_filenames[0])
-		filename = dir + '\\' + found_filenames[0]
+		filename = dir + "\\" + found_filenames[0]
 	elif (len(found_filenames) > 1):
 		print " ** Found multiple ({0}) .fits files ** ".format(len(found_filenames))
-		filename = dir + '\\' + choose(found_filenames)
+		filename = dir + "\\" + choose(found_filenames)
 	else:
 		print " ** No .fits files found with name '", filename,"' **\n    -- ABORTING --   "
 		exit()
@@ -116,7 +119,7 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 	
 	
 	# look for files in galaxy directory with 'cutout' in their name
-	if (verbose): print "  ** Searching for 'GLEAM_cutout' in '.../{0}' ** ".format(dir.split('\\')[-1])
+	if (verbose): print "  ** Searching for 'GLEAM_cutout' in '.../{0}' ** ".format(dir.split("\\")[-1])
 	found_filenames = []
 	gal_files = os.listdir(dir)
 	for file_name in gal_files:
@@ -124,15 +127,15 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 			found_filenames.append(file_name)
 	if (len(found_filenames) == 1): # if only one appropriate file found
 		print "  ** Found .fits file: {0} **".format(found_filenames[0])
-		filename = dir + '\\' + found_filenames[0]
+		filename = dir + "\\" + found_filenames[0]
 	elif (len(found_filenames) > 1): # if multiple appropriate files found
 		print "  ** Multiple ({0}) files found  ** ".format(len(found_filenames))
-		filename = dir + '\\' + choose(found_filenames)
+		filename = dir + "\\" + choose(found_filenames)
 	else: # if no appropriate files found
 		print " ** WARNING: No GLEAM_cutout_.fits files found in '{0}' directory **".format(galaxy)
 		print " ** Download cutout for '{0}' using parameters: **\n    - RA: {1}\n    - DEC: {2}\n    - Angular diameter: {3}\n    - Frequency: {4}".format(galaxy,ra,dec,ang_diam,freq)
 		while True:
-			choice = str(raw_input(" >> Download (y/n)?: "))
+			choice = "y" #str(raw_input(" >> Download (y/n)?: "))
 			if ("y" in choice.lower()): # download cutout
 				DL_filename = get_cutout(ra, dec, freq, ang_diam, download_dir=dir, listf=False)
 				filename = "{0}\\GLEAM_cutout_{1}_{2}.fits".format(dir,freq,galaxy)
@@ -179,10 +182,10 @@ def check_for_file(dir, RA, DEC, ang_diam, in_freq="N/A"):
 	
 	if (len(found_filenames) == 1):
 		if (verbose): print "  ** Found pre-existing file '{0}' ** ".format(found_filenames[0])
-		return dir + '\\' + found_filenames[0]
+		return dir + "\\" + found_filenames[0]
 	elif (len(found_filenames) > 1):
 		print "  ** Multiple ({0}) pre-existing files found  ** ".format(len(found_filenames))
-		filename = dir + '\\' + choose(found_filenames)
+		filename = dir + "\\" + choose(found_filenames)
 	else:
 		print "  ** WARNING: no appropriate files found - Returning 'None' ** "
 		return None
@@ -395,7 +398,7 @@ def to_catalogue_table(filename):
 	"""
 	
 	catalogue_filename = filename.replace(".fits","_catalogue.csv")
-	if (verbose): print "\n <Writing catalogue to '.../{0[0]}/{0[1]}'>".format(catalogue_filename.split('\\')[-2:])
+	if (verbose): print "\n <Writing catalogue to '.../{0[0]}/{0[1]}'>".format(catalogue_filename.split("\\")[-2:])
 	
 	data = Table.read(filename)
 	data.write(catalogue_filename,format='ascii.csv')
@@ -416,7 +419,7 @@ def run_Aegean(input_fits_name, input_table_name, RA, DEC, ang_diam, freq, head)
 	if (verbose): print "\n <Running Aegean.py>"
 	
 	out_filename = 'GLEAM_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+freq
-	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+"\\"+out_filename+'.fits'+'","'+head+"\\"+out_filename+'.reg'+'"' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
 	
 def run_AeRes(fits_filename, catalogue_filename, c_freq, head, base):
 	"""
@@ -463,8 +466,8 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 	try:
 		freqs = freq_ref[central_freq]
 	except KeyError: # this should actually be handled by get_frequency()
-		print " ** WARNING: no frequency '",central_freq,"' found **\n    Available frequencies: "
-		for ii in freq_ref: print '      - '+ii
+		print " ** WARNING: no frequency '{0}' found **\n    Available frequencies: ".format(central_freq)
+		for ii in freq_ref: print "      - {0}".format(ii)
 		while True:
 			choice = str(raw_input("\n >> Choose frequency: "))
 			if (choice in freq_ref): freqs = freq_ref[central_freq]; break
@@ -473,6 +476,12 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 	gvp = GleamVoProxy() # start the gleam proxy // gvp = GleamVoProxy(p_port=7799)
 	gvp.start()
 
+	# check if downloads file exists, if not -> create it
+	if (os.path.exists(download_dir) == False): 
+		os.system("md \"{0}\"".format(download_dir))
+
+	
+	
 	if (download_dir and (not os.path.exists(download_dir))):
 		print "Invalid download dir: {0}".format(download_dir)
 		return
@@ -499,7 +508,7 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 		else:
 			print freq, url
 	
-	os.system('rename '+'"'+download_dir+'\\'+str(ra)+'_'+str(dec)+'_'+freqs+'.fits"'+' "GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits"')
+	os.system('rename '+'"'+download_dir+"\\"+str(ra)+'_'+str(dec)+'_'+freqs+'.fits"'+' "GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits"')
 	return download_dir+'\\GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits'
 	
 	gvp.stop()
@@ -525,7 +534,7 @@ def main():
 					  help="write to catalogue file")
 	parser.add_option('-i','--datafile',
 					  action='store', dest='data_filename', 
-					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR4\\GLEAMIDR4.csv",
+					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR{0}\\GLEAMIDR{0}.csv".format(IDR_version),
 					  help="destination of input table for sources",metavar="SOURCES_FILE")
 	parser.add_option('-f', '--central_freq', 
 					  action='store',type='string',dest='central_freq', default="deep",
@@ -568,16 +577,15 @@ def main():
 		else:
 			print "\n  ** No .fits filename specified **"
 			if (options.ra_map == None or options.dec_map == None): print "  ** WARNING: Must specify both RA and DEC **\n   -- ABORTING --   "; exit()
-			print "    Do you want to attempt downloading .fits file from < GLEAM Postage Stamp Service > using parameters: "
-			print "  - RA: ", options.ra_map,"\n  - DEC: ", options.dec_map,"\n  - Angular Diameter: ", options.ang_diameter, "\n  - Frequency: ", options.central_freq, " MHz"
+			print "    Do you want to attempt downloading .fits file from < GLEAM Postage Stamp Service > using parameters: \n  - RA: {0}\n  - DEC: {1}\n  - Angular Diameter: {2}\n  - Frequency: {3} MHz".format(options.ra_map, options.dec_map, options.ang_diameter, options.central_freq)
 			while True:
 				choice = str(raw_input(">> (y/n)?: "))
 				if (choice.lower() == 'y'):
 					(out_dir_head, out_dir_tail) = ntpath.split(options.data_filename)
-					fits_filename = get_cutout(options.ra_map, options.dec_map, options.central_freq, options.ang_diameter, download_dir=out_dir_head+'\\Downloads', listf=False)
+					fits_filename = get_cutout(options.ra_map, options.dec_map, options.central_freq, options.ang_diameter, download_dir="{0}\\Downloads".format(out_dir_head), listf=False)
 					break
 				elif (choice.lower() == 'n'):
-					print "  ** Not attempting to download .fits filename **\n\n   -- ABORTING --   "
+					print "\n  ** Not attempting to download .fits filename **\n\n   -- ABORTING --   "
 					exit()
 					
 					
@@ -585,7 +593,7 @@ def main():
 
 		
 	head, tail = ntpath.split(fits_filename)
-	if (verbose): print "\n  ** Using .fits file: '.../{0[0]}/{0[1]}/{0[2]}/{1}' ** ".format(head.split('\\')[-3:],tail)
+	if (verbose): print "\n  ** Using .fits file: '.../{0[0]}/{0[1]}/{0[2]}/{1}' ** ".format(head.split("\\")[-3:],tail)
 	
 	if (options.base_name == None):
 		base = tail.replace(".fits","") if (options.galaxy_name==None) else options.galaxy_name

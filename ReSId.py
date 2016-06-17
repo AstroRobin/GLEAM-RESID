@@ -29,6 +29,9 @@ from progressbar import ProgressBar, Bar, Percentage
 from gleam_vo_example import GleamVoProxy, download_file
 import pyvo
 
+# Hardcoding
+IDR_version = "4"
+
 def choose(filenames):
 	"""
 	Given a list of filenames, this function will list all filenames in a formatted order and prompt the user to select a file
@@ -60,18 +63,18 @@ def find_filename(search_path):
 	:return: The .fits file name and path
 	"""
 	dir, filename = ntpath.split(search_path)
-	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '{0}' in .../{1[0]}/{1[1]} **".format(filename,dir.split('\\')[-2:])
+	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '{0}' in .../{1[0]}/{1[1]} **".format(filename,dir.split("\\")[-2:])
 		
 	found_filenames = []
 	for file in os.listdir(dir):
 		if filename in file:
-			found_filenames.append(filename)
+			found_filenames.append(file)
 	if (len(found_filenames) == 1):
 		print "  ** Found .fits file: {0} **".format(found_filenames[0])
-		filename = dir + '\\' + found_filenames[0]
+		filename = dir + "\\" + found_filenames[0]
 	elif (len(found_filenames) > 1):
 		print " ** Found multiple ({0}) .fits files ** ".format(len(found_filenames))
-		filename = dir + '\\' + choose(found_filenames)
+		filename = dir + "\\" + choose(found_filenames)
 	else:
 		print " ** No .fits files found with name '", filename,"' **\n    -- ABORTING --   "
 		exit()
@@ -116,7 +119,7 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 	
 	
 	# look for files in galaxy directory with 'cutout' in their name
-	if (verbose): print "  ** Searching for 'GLEAM_cutout' in '.../{0}' ** ".format(dir.split('\\')[-1])
+	if (verbose): print "  ** Searching for 'GLEAM_cutout' in '.../{0}' ** ".format(dir.split("\\")[-1])
 	found_filenames = []
 	gal_files = os.listdir(dir)
 	for file_name in gal_files:
@@ -124,15 +127,15 @@ def find_gal_filename(galaxy,ra,dec,ang_diam,freq):
 			found_filenames.append(file_name)
 	if (len(found_filenames) == 1): # if only one appropriate file found
 		print "  ** Found .fits file: {0} **".format(found_filenames[0])
-		filename = dir + '\\' + found_filenames[0]
+		filename = dir + "\\" + found_filenames[0]
 	elif (len(found_filenames) > 1): # if multiple appropriate files found
 		print "  ** Multiple ({0}) files found  ** ".format(len(found_filenames))
-		filename = dir + '\\' + choose(found_filenames)
+		filename = dir + "\\" + choose(found_filenames)
 	else: # if no appropriate files found
 		print " ** WARNING: No GLEAM_cutout_.fits files found in '{0}' directory **".format(galaxy)
 		print " ** Download cutout for '{0}' using parameters: **\n    - RA: {1}\n    - DEC: {2}\n    - Angular diameter: {3}\n    - Frequency: {4}".format(galaxy,ra,dec,ang_diam,freq)
 		while True:
-			choice = str(raw_input(" >> Download (y/n)?: "))
+			choice = "y" #str(raw_input(" >> Download (y/n)?: "))
 			if ("y" in choice.lower()): # download cutout
 				DL_filename = get_cutout(ra, dec, freq, ang_diam, download_dir=dir, listf=False)
 				filename = "{0}\\GLEAM_cutout_{1}_{2}.fits".format(dir,freq,galaxy)
@@ -179,10 +182,10 @@ def check_for_file(dir, RA, DEC, ang_diam, in_freq="N/A"):
 	
 	if (len(found_filenames) == 1):
 		if (verbose): print "  ** Found pre-existing file '{0}' ** ".format(found_filenames[0])
-		return dir + '\\' + found_filenames[0]
+		return dir + "\\" + found_filenames[0]
 	elif (len(found_filenames) > 1):
 		print "  ** Multiple ({0}) pre-existing files found  ** ".format(len(found_filenames))
-		filename = dir + '\\' + choose(found_filenames)
+		filename = dir + "\\" + choose(found_filenames)
 	else:
 		print "  ** WARNING: no appropriate files found - Returning 'None' ** "
 		return None
@@ -211,7 +214,7 @@ def get_frequency(freq):
 	if (freq.lower() in ['red','r']): freq = 'red'
 	if (freq.lower() in ['green','g']): freq = 'green'
 	if (freq.lower() in ['blue','b']): freq = 'blue'
-	if (freq.lower() in ['white','deep','wide','w']): freq = 'deep'
+	if (freq.lower() in ['white','deep','wide','w']): freq = 'wide'
 	
 
 	return freq
@@ -277,7 +280,7 @@ def extract_sources(data, RA, DEC, ang_diam, head):
 	pbar = ProgressBar(widgets=['  ** Extracting sources: ', Percentage(), ' ', Bar(), ' ** '],maxval=num_sources).start()
 	for ii in range(0,num_sources):
 		pbar.update(ii+1)
-		if (data[ii]['RAJ2000'] >= RA - 0.5*ang_diam_buff and data[ii]['RAJ2000'] <= RA + 0.5*ang_diam_buff and data[ii]['DECJ2000'] >= DEC - 0.5*ang_diam_buff and data[ii]['DECJ2000'] <= DEC + 0.5*ang_diam_buff):
+		if (data[ii]['RAJ2000'] >= RA - 0.5*ang_diam_buff and data[ii]['RAJ2000'] <= RA + 0.5*ang_diam_buff and data[ii]['DEJ2000'] >= DEC - 0.5*ang_diam_buff and data[ii]['DEJ2000'] <= DEC + 0.5*ang_diam_buff):
 			source_data.add_row(data[ii])
 			found_sources += 1
 	pbar.finish()
@@ -310,6 +313,7 @@ def calc_peak_flux (a,b,psf_a,psf_b,int_flux,err_int_flux):
 	
 	:return: peak_flux and err_peak_flux
 	"""
+	# now redundant -> IDR4 has peak fluxes given.
 	
 	peak_flux = ((psf_a*psf_b)/(a*b))*int_flux
 	err_peak_flux = (peak_flux/int_flux)*err_int_flux
@@ -327,7 +331,7 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	:param ang_diam: angular diameter of the image
 	"param head: The path for the data 'snippet'; i.e. the Aegean formatted single frequency column table of the in_data
 	
-	:return: the filename of the catalog
+	:return: the filename of the catalogue
 	"""
 	
 	num_sources = len(in_data)
@@ -335,7 +339,7 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	
 	# Aegean requirement information
 	out_data['island'] = [kk for kk in range(1,num_sources+1)] #island: 1 -> num_sources
-	out_data['source'] = [0]*num_sources # source -> 0
+	out_data['source'] = [0]*num_sources # source = 0
 	
 	# Background rms information
 	out_data['background'] = in_data['background_'+c_freq] # background noise for this frequency band
@@ -344,27 +348,27 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	# Positional information
 	out_data['ra_str'] = in_data['ra_str']; out_data['dec_str'] = in_data['dec_str'] # RA/DEC Strings
 	out_data['ra'] = in_data['RAJ2000']; out_data['err_ra'] = in_data['err_RAJ2000'] # RA + RA_err
-	out_data['dec'] = in_data['DECJ2000']; out_data['err_dec'] = in_data['err_DECJ2000'] # DEC + DEC_err
+	out_data['dec'] = in_data['DEJ2000']; out_data['err_dec'] = in_data['err_DEJ2000'] # DEC + DEC_err
 	
 	# Peak and integrated flux data
-	peak_flux_arr = [0]*num_sources; err_peak_flux_arr = [0]*num_sources
-	for ii in range(0,num_sources):
-		(peak_flux_arr[ii], err_peak_flux_arr[ii]) = calc_peak_flux(in_data['a_'+c_freq][ii],in_data['b_'+c_freq][ii],in_data['psf_a_'+c_freq][ii],in_data['psf_b_'+c_freq][ii],in_data['int_flux_'+c_freq][ii],in_data['err_fit_flux_'+c_freq][ii])
-	out_data['peak_flux'] = peak_flux_arr
-	out_data['err_peak_flux'] = err_peak_flux_arr
+	# peak_flux_arr = [0]*num_sources; err_peak_flux_arr = [0]*num_sources
+	# for ii in range(0,num_sources):
+	#	(peak_flux_arr[ii], err_peak_flux_arr[ii]) = calc_peak_flux(in_data['a_'+c_freq][ii],in_data['b_'+c_freq][ii],in_data['psf_a_'+c_freq][ii],in_data['psf_b_'+c_freq][ii],in_data['int_flux_'+c_freq][ii],in_data['err_fit_flux_'+c_freq][ii])
+	out_data['peak_flux'] = in_data['peak_flux_'+c_freq]
+	out_data['err_peak_flux'] = in_data['err_peak_flux_'+c_freq]
 	out_data['int_flux'] = in_data['int_flux_'+c_freq]
-	out_data['err_int_flux'] = in_data['err_fit_flux_'+c_freq]
+	out_data['err_int_flux'] = in_data['err_int_flux_'+c_freq]
 	
 	# Source shape information
 	out_data['a'] = in_data['a_'+c_freq]
-	out_data['err_a'] = 0.0 # no a_err given in GLEAMIDR3.fits
+	out_data['err_a'] = 0.0 # no a_err (8GHz) given in GLEAMIDR4.fits
 	out_data['b'] = in_data['b_'+c_freq]
-	out_data['err_b'] = 0.0 # no b_err given in GLEAMIDR3.fits
+	out_data['err_b'] = 0.0 # no b_err (8GHz) given in GLEAMIDR4.fits
 	out_data['pa'] = in_data['pa_'+c_freq]
-	out_data['err_pa'] = 0.0 # no pa_err given in GLEAMIDR3.fits
+	out_data['err_pa'] = 0.0 # no pa_err (8GHz) given in GLEAMIDR4.fits
 	
-	# Flags information
-	out_data['flags'] = in_data['flags_deep']
+	# Flags information -> not in IDR4
+	out_data['flags'] = 0
 	
 	# Residuals information
 	out_data['residual_mean'] = in_data['residual_mean_'+c_freq]
@@ -384,6 +388,22 @@ def to_Aegean_table(in_data, c_freq, RA, DEC, ang_diam, head):
 	out_data.write(filename,format='fits')
 	return filename
 
+def to_catalogue_table(filename):
+	"""
+	Writes Aegean table to catalogue format (.csv) for plotting
+	
+	<param: filename> - the filename of the catalogue
+	
+	<return: N/A>
+	"""
+	
+	catalogue_filename = filename.replace(".fits","_catalogue.csv")
+	if (verbose): print "\n <Writing catalogue to '.../{0[0]}/{0[1]}'>".format(catalogue_filename.split("\\")[-2:])
+	
+	data = Table.read(filename)
+	data.write(catalogue_filename,format='ascii.csv')
+	
+	
 def run_Aegean(input_fits_name, input_table_name, RA, DEC, ang_diam, freq, head):
 	"""
 	Runs Aegean.py source finding program by Paul Hancock. Outputs tables associated with the priorized source finding of the input .fits image
@@ -399,22 +419,22 @@ def run_Aegean(input_fits_name, input_table_name, RA, DEC, ang_diam, freq, head)
 	if (verbose): print "\n <Running Aegean.py>"
 	
 	out_filename = 'GLEAM_snippet_'+RA+'_'+DEC+'_'+ang_diam+'_'+freq
-	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+'\\'+out_filename+'.fits'+'","'+head+'\\'+out_filename+'.reg'+'"' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+"\\"+out_filename+'.fits'+'","'+head+"\\"+out_filename+'.reg'+'"' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
 	
-def run_AeRes(fits_filename, catalog_filename, c_freq, head, base):
+def run_AeRes(fits_filename, catalogue_filename, c_freq, head, base):
 	"""
 	Runs AeRes.py source subtracting program by Paul Hancock. Outputs a .fits image of the original image with the specified sources subtracted
 	
 	:param fits_filename: the file name of the fits file to have sources subtracted from
-	:param catalog_filename: the file name of the source catalog snippet in Aegean format
+	:param catalogue_filename: the file name of the source catalogue snippet in Aegean format
 	:param c_freq: the central frequency.
 	:param head: the path to the input source table
 	:param base: the base name of the file #not implemented
 	"""
 	
 	if (verbose): print "\n <Running AeRes.py>"
-	print 'python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"'
-	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalog_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"')
+	print 'python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalogue_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"'
+	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalogue_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+head+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"')
 
 def run_BANE(fits_filename):
 	"""
@@ -425,7 +445,6 @@ def run_BANE(fits_filename):
 	
 	if (verbose): print "\n <Running BANE.py>"
 	os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\BANE.py'+'"' + ' ' + '"'+fits_filename+'"')
-	
 	
 def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 	"""
@@ -443,12 +462,12 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 	"""
 	if (verbose): print "\n <Downloading .fits file>"
 	
-	freq_ref = {'076':'072-080','084':'080-088','092':'088-095','099':'095-103','107':'103-111','115':'111-118','122':'118-126','130':'126-134','143':'139-147','151':'147-154','158':'154-162','166':'162-170','174':'170-177','181':'177-185','189':'185-193','197':'193-200','204':'200-208','212':'208-216','220':'216-223','227':'223-231','red':'072-103','green':'103-134','blue':'139-170','deep':'170-231'}
+	freq_ref = {'076':'072-080','084':'080-088','092':'088-095','099':'095-103','107':'103-111','115':'111-118','122':'118-126','130':'126-134','143':'139-147','151':'147-154','158':'154-162','166':'162-170','174':'170-177','181':'177-185','189':'185-193','197':'193-200','204':'200-208','212':'208-216','220':'216-223','227':'223-231','red':'072-103','green':'103-134','blue':'139-170','wide':'170-231'}
 	try:
 		freqs = freq_ref[central_freq]
 	except KeyError: # this should actually be handled by get_frequency()
-		print " ** WARNING: no frequency '",freq,"' found **\n    Available frequencies: "
-		for ii in freq_ref: print '      - '+ii
+		print " ** WARNING: no frequency '{0}' found **\n    Available frequencies: ".format(central_freq)
+		for ii in freq_ref: print "      - {0}".format(ii)
 		while True:
 			choice = str(raw_input("\n >> Choose frequency: "))
 			if (choice in freq_ref): freqs = freq_ref[central_freq]; break
@@ -457,6 +476,12 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 	gvp = GleamVoProxy() # start the gleam proxy // gvp = GleamVoProxy(p_port=7799)
 	gvp.start()
 
+	# check if downloads file exists, if not -> create it
+	if (os.path.exists(download_dir) == False): 
+		os.system("md \"{0}\"".format(download_dir))
+
+	
+	
 	if (download_dir and (not os.path.exists(download_dir))):
 		print "Invalid download dir: {0}".format(download_dir)
 		return
@@ -483,7 +508,7 @@ def get_cutout(ra, dec, central_freq, size=4.0, download_dir=None, listf=False):
 		else:
 			print freq, url
 	
-	os.system('rename '+'"'+download_dir+'\\'+str(ra)+'_'+str(dec)+'_'+freqs+'.fits"'+' "GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits"')
+	os.system('rename '+'"'+download_dir+"\\"+str(ra)+'_'+str(dec)+'_'+freqs+'.fits"'+' "GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits"')
 	return download_dir+'\\GLEAM_cutout_'+str(ra)+'_'+str(dec)+'_'+str(size)+'_'+central_freq+'.fits'
 	
 	gvp.stop()
@@ -504,13 +529,16 @@ def main():
 	parser.add_option('-v','--verbose',
 					  action='store_true', dest='verbose',default=False,
 					  help="print status messages to stdout")
+	parser.add_option('-c','--catalogue',
+					  action='store_true', dest='catalogue',default=False,
+					  help="write to catalogue file")
+	parser.add_option('-i','--datafile',
+					  action='store', dest='data_filename', 
+					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR{0}\\GLEAMIDR{0}.csv".format(IDR_version),
+					  help="destination of input table for sources",metavar="SOURCES_FILE")
 	parser.add_option('-f', '--central_freq', 
 					  action='store',type='string',dest='central_freq', default="deep",
 					  help="provide central frequency (MHz)", metavar="FREQUENCY")
-	parser.add_option('-i','--datafile',
-					  action='store', dest='data_filename', 
-					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR3\\GLEAMIDR3.csv",
-					  help="destination of input table for sources",metavar="SOURCES_FILE")
 	parser.add_option('-r','--ra',
 					  action='store', type='float', dest='ra_map',default=None,
 					  help="right ascension of the image",metavar="RA")
@@ -549,16 +577,15 @@ def main():
 		else:
 			print "\n  ** No .fits filename specified **"
 			if (options.ra_map == None or options.dec_map == None): print "  ** WARNING: Must specify both RA and DEC **\n   -- ABORTING --   "; exit()
-			print "    Do you want to attempt downloading .fits file from < GLEAM Postage Stamp Service > using parameters: "
-			print "  - RA: ", options.ra_map,"\n  - DEC: ", options.dec_map,"\n  - Angular Diameter: ", options.ang_diameter, "\n  - Frequency: ", options.central_freq, " MHz"
+			print "    Do you want to attempt downloading .fits file from < GLEAM Postage Stamp Service > using parameters: \n  - RA: {0}\n  - DEC: {1}\n  - Angular Diameter: {2}\n  - Frequency: {3} MHz".format(options.ra_map, options.dec_map, options.ang_diameter, options.central_freq)
 			while True:
 				choice = str(raw_input(">> (y/n)?: "))
 				if (choice.lower() == 'y'):
 					(out_dir_head, out_dir_tail) = ntpath.split(options.data_filename)
-					fits_filename = get_cutout(options.ra_map, options.dec_map, options.central_freq, options.ang_diameter, download_dir=out_dir_head+'\\Downloads', listf=False)
+					fits_filename = get_cutout(options.ra_map, options.dec_map, options.central_freq, options.ang_diameter, download_dir="{0}\\Downloads".format(out_dir_head), listf=False)
 					break
 				elif (choice.lower() == 'n'):
-					print "  ** Not attempting to download .fits filename **\n\n   -- ABORTING --   "
+					print "\n  ** Not attempting to download .fits filename **\n\n   -- ABORTING --   "
 					exit()
 					
 					
@@ -566,7 +593,7 @@ def main():
 
 		
 	head, tail = ntpath.split(fits_filename)
-	if (verbose): print "\n  ** Using .fits file: '.../{0[0]}/{0[1]}/{0[2]}/{1}' ** ".format(head.split('\\')[-3:],tail)
+	if (verbose): print "\n  ** Using .fits file: '.../{0[0]}/{0[1]}/{0[2]}/{1}' ** ".format(head.split("\\")[-3:],tail)
 	
 	if (options.base_name == None):
 		base = tail.replace(".fits","") if (options.galaxy_name==None) else options.galaxy_name
@@ -574,7 +601,7 @@ def main():
 		base = options.base_name
 	
 	# check if c_freq is RGB freq band -> in which case, need to generate table of found sources in .fits image by running Aegean
-	if ((options.central_freq).lower() in ['red','r','green','g','blue','b']):
+	if ((options.central_freq).lower() in ["red","r","green","g","blue","b"]):
 		# run_BANE(fits_filename) *BANE.py does not work on windows ~Paul Hancock
 		if (verbose): print "\n  ** Stacked frequency band: '{0}' chosen **  ".format(options.central_freq)
 		deep_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),"deep")
@@ -591,18 +618,18 @@ def main():
 		# read data from input table
 		in_data = read_data(options.data_filename,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),head)
 	
-	catalog_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),options.central_freq)
-	if (catalog_filename == None): # No '_snippet_' file was found
+	catalogue_filename = check_for_file(head,float(options.ra_map),float(options.dec_map),float(options.ang_diameter),options.central_freq)
+	if (catalogue_filename == None): # No '_snippet_' file was found
 		# Extract sources which are constrained by input RA/DEC and ang_diam
 		source_data = extract_sources(in_data,options.ra_map,options.dec_map,options.ang_diameter,head)
 		
 		# Convert source data to Aegean format table
-		catalog_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
-	
+		catalogue_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
+	if (options.catalogue): to_catalogue_table(catalogue_filename)
 		
-	#catalog_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
+	#catalogue_filename = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,head)
 	
 	# run AeRes.py
-	run_AeRes(fits_filename, catalog_filename, options.central_freq, head, base)
+	run_AeRes(fits_filename, catalogue_filename, options.central_freq, head, base)
 	
 main()

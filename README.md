@@ -1,7 +1,7 @@
 # GLEAM-RESID
 GLEAM REsidual Source IDentifier
 
-This program is designed to IDentify REsidual Sources that were possibly missed in the initial GLEAM source identification selected from the WHITE frequency stacked (170-231MHz) images in IDR3. Such sources are believed to be very steep spectrum sources (alpha > 2) such that they could be detected at low frequencies images, yet fall below the detection threshold in the WHITE image frequency range. 
+This program is designed to IDentify REsidual Sources that are possibly missed in the GLEAM catalogue. This occurs because sources are selected from the 'wide-band' frequency stacked (170-231MHz) images in GLEAM. Such sources are required to be very steep spectrum sources (alpha < -2.5) such that they are detectable at low frequencies, yet fall below the detection threshold in the wide-band image. 
 
 Usage: ReSId.py [options]
 

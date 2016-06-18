@@ -16,4 +16,4 @@ Options:
 -r RA, --ra=RA:                                             right ascension of the image
 -d DEC, --dec=DEC:                                          declination of the image
 -a ANGULAR_DIAMETER, --angular_diameter=ANGULAR_DIAMETER:   angular diameter of the sides of the image
--b BASE_NAME, --base=BASE_NAME:                             The base name for the output Aegean formatted table
+-b BASE_NAME, --base=BASE_NAME:                             The base name for the output Aegean formatted table.

@@ -248,13 +248,13 @@ def read_data(filename, RA, DEC, ang_diam, head):
 	
 	return in_data
 	
-def extract_sources(data, RA, DEC, ang_diam, head):
+def extract_sources(data, in_RA, in_DEC, ang_diam, head):
 	"""
 	Find sources that are positioned with the dimensions of the image specified.
 	
-	:param in_data: data of all sources
-	:param RA: right ascension of the image
-	:param DEC: declination of the image
+	:param data: data of all sources
+	:param in_RA: right ascension of the image
+	:param in_DEC: declination of the image
 	:param ang_diam: angular diameter of the image
 	:param head: path to destination folder
 	
@@ -273,22 +273,52 @@ def extract_sources(data, RA, DEC, ang_diam, head):
 			
 	source_data = Table(names=(data.colnames),dtype=dt)
 	
-	ang_diam_buff = ang_diam*math.sqrt(2)
-	num_sources = len(data)
+	try:
+		RA_min = in_RA - (0.5*ang_diam*math.sqrt(2))/(abs(math.cos(math.radians(in_DEC))))
+		RA_max = in_RA + (0.5*ang_diam*math.sqrt(2))/(abs(math.cos(math.radians(in_DEC))))
+	except ZeroDivisionError:
+		RA_min = 0.0
+		RA_max = 360.0
+	DEC_min = in_DEC - 0.5*ang_diam*math.sqrt(2)
+	DEC_max = in_DEC + 0.5*ang_diam*math.sqrt(2)
 	
+	RA_underflow = False; RA_overflow = False
+	if (RA_min < 0.0):
+		RA_min_over = 360.0 + RA_min
+		RA_max_over = 360.0
+		RA_min = 0.0
+		RA_underflow = True		
+	elif (RA_max > 360.0):
+		RA_min_over = 0.0
+		RA_max_over = RA_max - 360.0
+		RA_max = 360.0
+		RA_overflow = True
+	else:
+		RA_min_over = 0.0
+		RA_max_over = 0.0
+	
+	num_sources = len(data)
+		
 	found_sources = 0
-	pbar = ProgressBar(widgets=['  ** Extracting sources: ', Percentage(), ' ', Bar(), ' ** '],maxval=num_sources).start()
+	pbar = ProgressBar(widgets=["  ** Extracting sources: ", Percentage(), " ", Bar(), " ** "],maxval=num_sources).start()
 	for ii in range(0,num_sources):
 		pbar.update(ii+1)
-		if (data[ii]['RAJ2000'] >= RA - 0.5*ang_diam_buff and data[ii]['RAJ2000'] <= RA + 0.5*ang_diam_buff and data[ii]['DEJ2000'] >= DEC - 0.5*ang_diam_buff and data[ii]['DEJ2000'] <= DEC + 0.5*ang_diam_buff):
+		RA = data[ii]['RAJ2000']
+		DEC = data[ii]['DEJ2000']
+		if ((DEC>=DEC_min and DEC<=DEC_max) and ((RA>=RA_min and RA<=RA_max) or (RA>=RA_min_over and RA<=RA_max_over))):
 			source_data.add_row(data[ii])
 			found_sources += 1
+
+	if (RA_underflow):
+		print "\n  ** Position bounds: \n      - RA: {0} -> {1}\n      - DEC: {2} -> {3}\n  ** Number of sources sources found: {4}".format(RA_min_over,RA_max,DEC_min,DEC_max,found_sources)
+	elif (RA_overflow):
+		print "\n  ** Position bounds: \n      - RA: {0} -> {1}\n      - DEC: {2} -> {3}\n  ** Number of sources sources found: {4}".format(RA_min,RA_max_over,DEC_min,DEC_max,found_sources)
+	else:
+		print "\n  ** Position bounds: \n      - RA: {0} -> {1}\n      - DEC: {2} -> {3}\n  ** Number of sources sources found: {4}".format(RA_min,RA_max,DEC_min,DEC_max,found_sources)
+		
 	pbar.finish()
-	
-	print "\n  ** Position bounds: \n      - RA: ",RA - 0.5*ang_diam_buff," -> ",RA + 0.5*ang_diam_buff," \n      - DEC: ",DEC - 0.5*ang_diam_buff," -> ",DEC + 0.5*ang_diam_buff, "\n  ** Number of sources sources found: ", len(source_data)
-	
 	catch = False
-	filename = "GLEAM_chunk_"+str(RA)+"_"+str(DEC)+"_"+str(ang_diam)+".fits"
+	filename = "GLEAM_chunk_"+str(in_RA)+"_"+str(in_DEC)+"_"+str(ang_diam)+".fits"
 	for search_filename in os.listdir(head):
 		if (catch): break
 		if (filename == search_filename):
@@ -537,7 +567,7 @@ def main():
 					  default="C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\GLEAM\\Data\\IDR{0}\\GLEAMIDR{0}.csv".format(IDR_version),
 					  help="destination of input table for sources",metavar="SOURCES_FILE")
 	parser.add_option('-f', '--central_freq', 
-					  action='store',type='string',dest='central_freq', default="deep",
+					  action='store',type='string',dest='central_freq', default="wide",
 					  help="provide central frequency (MHz)", metavar="FREQUENCY")
 	parser.add_option('-r','--ra',
 					  action='store', type='float', dest='ra_map',default=None,
@@ -559,7 +589,7 @@ def main():
 	
 	
 	
-	(options, args) = parser.parse_args()	
+	(options, args) = parser.parse_args()
 	global verbose; verbose = options.verbose
 	
 	options.central_freq = get_frequency(options.central_freq)

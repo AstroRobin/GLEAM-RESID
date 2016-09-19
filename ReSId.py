@@ -30,6 +30,10 @@ from optparse import OptionParser
 from Tkinter import Tk
 from tkFileDialog import askopenfilename, askdirectory
 
+# shush Astropy complaining
+from astropy.utils.exceptions import AstropyWarning
+import warnings
+warnings.simplefilter('ignore', category=AstropyWarning)
 
 # Imports for get_gleam()
 # need to get Nick to install wsgi_intercept
@@ -144,7 +148,6 @@ def find_gal_file(gals_dir,galaxy,ra,dec,ang_diam,freq):
 	# dir = "C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\" # root directory for DSph galaxy images
 	# look for directories with the name of the galaxy given
 	catch = False
-	print "\n'{0}'\n".format(gals_dir)
 	for dir_name in os.listdir(gals_dir): # iterate over all galaxy directories
 		if (catch): break
 		if (dir_name == galaxy):
@@ -165,14 +168,14 @@ def find_gal_file(gals_dir,galaxy,ra,dec,ang_diam,freq):
 	
 	
 	# look for files in galaxy directory with 'cutout' in their name
-	if (verbose): print "  ** Searching for appropriate 'GLEAM_cutout' in '.../{0}' ** ".format(dir.split("/")[-1])
+	if (verbose): print "  ** Searching for appropriate 'GLEAM_cutout' in '...{0[0]}/{0[1]}/{0[2]}' ** ".format(dir.split("/")[-3:])
 	
 	found_files = []
 	for filename in os.listdir(dir):
 		if ("cutout" in filename and freq in filename):
 			found_files.append(filename)
 	if (len(found_files) == 1): # if only one appropriate file found
-		if (verbose): print "  ** Found .fits file: {0} **".format(found_files[0])
+		if (verbose): print "  ** Found .fits file: \"{0}\" **".format(found_files[0])
 		file = "{0}/{1}".format(dir,found_files[0])
 	elif (len(found_files) > 1): # if multiple appropriate files found
 		print "  ** Multiple ({0}) files found  ** ".format(len(found_files))
@@ -724,7 +727,7 @@ def main():
 	parser.add_option('-a','--angular_diameter',
 					  action='store', type='float', dest='ang_diameter',default=4.0,
 					  help="angular diameter of the sides of the image",metavar="ANGULAR_DIAMETER")
-	parser.add_option('-w','--wighting',
+	parser.add_option('-w','--weighting',
 					  action='store', type='string', dest='weighting',default=None,
 					  help="Image weighting (-2 < R < +2)",metavar="WEIGHTING")
 	parser.add_option('-b','--base',
@@ -760,15 +763,17 @@ def main():
 	if (verbose): print ("  ** Auto-Answer is on **  ")
 	
 	options.freq = get_frequency(options.freq)
-	if (verbose): print "\n  ** Using frequency: {0}**".format(options.freq)
+	if (verbose): print "  ** Using frequency: {0} **".format(options.freq)
 
 	# read log file, returns empty array if no log file exists or clear_log = True.
 	if (options.clear_log == False): last_fits_file, last_gal_dir, last_gal_name, last_catalogue_file, last_Aegean_dir = read_log()
 	else: os.system("rm ReSId_log.txt")
 	
 	if(verbose and options.clear_log != True):
+		# print last usages
+		last_used = read_log()
 		print "\n  ** Last used files: **"
-		for kk in read_log(): print "    - {0}".format(kk) # print last usages
+		for kk in range(len(last_used)): print "   - {0}: \"{1}\"".format(["Image file","Galaxy Directory","Galaxy name","Catalogue file","AEGEAN path"][kk],last_used[kk]) 
 	
 	#Tk().withdraw() # keeps then Tkinter root window from appearing
 	
@@ -796,7 +801,6 @@ def main():
 			if (options.RA == None or options.DEC == None): options.RA, options.DEC, options.ang_diameter = get_position(options.RA,options.DEC,options.ang_diameter)
 			if (verbose): print " ** Downloading GLEAM cutout for \"{0}\" using parameters: **\n    - RA: {1}\n    - DEC: {2}\n    - Angular diameter: {3}\n    - Frequency: {4} MHz".format(galaxy,options.RA,options.DEC,options.ang_diameter,options.freq)
 			if (os.path.exists("Downloads") == False): os.system("mkdir Downloads")
-			################################# HERE ########################################
 			
 			os.mkdir("Downloads\\RA_{0}-DEC_{1}-FREQ_{2}-DIAM_{3}.fits".format(option.RA,options.DEC,options.freq,options.ang_diam))
 			DL_file = get_cutout(options.RA, options.DEC, options.freq, options.ang_diameter, download_dir="Downloads\\RA_{0}-DEC_{1}-FREQ_{2}-DIAM_{3}.fits".format(option.RA,options.DEC,options.freq,options.ang_diam), listf=False)
@@ -883,7 +887,7 @@ def main():
 		catalogue_file = options.data_file
 	else: # if no catalogue has been specified
 		if (last_catalogue_file != ""):
-			print "\n ** WARNING: No catalogue file specified **\n  previous catalogue file used:\n \"{0}\" ".format(last_catalogue_file)
+			if (verbose): print "\n  ** WARNING: No catalogue file specified **\n  previous catalogue file used: \"{0}\" ".format(last_catalogue_file)
 			catch = False
 			while True:
 				if (catch): break
@@ -906,9 +910,8 @@ def main():
 	
 	# dir = path to directory, filename = name of the file only.
 	dir, filename = '/'.join(fits_file.split('/')[:-1]), fits_file.split('/')[-1]
-	print "ding ",dir.split("/")[-2:]
-	if (verbose): print "\n  ** Using .fits file: '.../{0[0]}/{0[1]}/{1}' ** ".format(dir.split("/")[-2:],filename)
 	
+		
 	if (verbose): print "\n  ** Getting .fits file header information  **"
 	data, hdr = pyfits.getdata(fits_file,0,header=True) 
 	Bmaj = hdr['BMAJ']*(60.0**2) # Beam major axis in arcsec
@@ -916,9 +919,9 @@ def main():
 	Bpa = hdr['BPA'] # Beam position angle
 	# get robustness weighting
 	if (options.weighting == None):
-		Robust = hdr['ROBUST'] # Robustness of images. -1 = Briggs, 0 = Natural
-	else
-		Robust = options.weighting
+		robust = hdr['ROBUST'] # Robustness of images. -1 = Briggs, 0 = Natural
+	else:
+		robust = options.weighting
 	# get RA/DEC of center pixel if not already specified
 	if (options.RA == None or options.DEC == None):
 		if (verbose): print "  ** WARNING: No RA or DEC specified -> using RA and DEC from \".../{0}\"".format(filename)
@@ -942,9 +945,18 @@ def main():
 	
 	log(fits_file,last_gal_dir,last_gal_name,catalogue_file,Aegean_dir)
 	
+	# print RESID input
+	if (verbose):
+		dash_len = len(" Image file: '.../") + len(dir.split("/")[-2]) + 1 + len(dir.split("/")[-1]) + 1 + len(filename) + 1 + 1
+		print "\n {0}\n{1}RESID input{1}\n {0}".format('*'*dash_len, ' '*((dash_len-len("RESID input"))/2))
+		print "\n  Image file: '.../{0[0]}/{0[1]}/{1}' ".format(dir.split("/")[-2:],filename)
+		print "  Catalogue file: '.../{0[0]}/{0[1]}/{0[2]}' ".format(catalogue_file.split("/")[-3:])
+		print "\n  Frequency: {0}\n  RA: {1}\n  DEC: {2}\n  Angular diameter: {3}\n  Wighting: {4}".format(options.freq,options.RA,options.DEC,options.ang_diameter,robust)
+		print "\n {0}\n".format("*"*dash_len)
+	
 	# check if c_freq is RGB freq band -> in which case, need to generate table of found sources in .fits image by running Aegean
 	if ((options.freq).lower() in ["red","r","green","g","blue","b"]):
-		if (verbose): print "\n  ** Stacked frequency band: '{0}' chosen **  ".format(options.freq)
+		if (verbose): print "\n  ** Stacked frequency band \"{0}\" chosen **  ".format(options.freq)
 		run_BANE(fits_file,Aegean_dir) # *BANE.py does not work on windows ~Paul Hancock
 		
 		wide_catalogue_file = extract_sources(catalogue_file,options.RA,options.DEC,Bmaj,Bmin,Bpa,options.ang_diameter,"wide",dir,base)

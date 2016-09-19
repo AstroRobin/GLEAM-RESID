@@ -1,5 +1,5 @@
 """
-The GLEAM REsidual Source IDentifier program
+The GLEAM REsidual Source IDentifier program (ReSId)
 
 Created by:
 Robin Cook
@@ -20,6 +20,9 @@ import time
 import scipy
 import astropy
 from astropy.table import Table
+from astropy import units as u
+from astropy.wcs import wcs
+import astropy.io.fits as pyfits
 import ntpath
 
 from optparse import OptionParser
@@ -27,14 +30,14 @@ from optparse import OptionParser
 from Tkinter import Tk
 from tkFileDialog import askopenfilename, askdirectory
 
-from progressbar import ProgressBar, Bar, Percentage
 
 # Imports for get_gleam()
-from gleam_vo_example import GleamVoProxy, download_file
-import pyvo
+# need to get Nick to install wsgi_intercept
+#from gleam_vo_example import GleamVoProxy, download_file
+#import pyvo
 
 # Hardcoding
-IDR_version = "4"
+IDR_version = "5"
 
 def choose(files):
 	"""
@@ -48,7 +51,7 @@ def choose(files):
 	print "  ** Multiple ({0}) files found  ** ".format(len(files))
 	for kk in range(0,len(files)): print " {0} - {1}".format(kk+1,files[kk])
 	while True:
-			choice = raw_input("\n >> Choose file: ")
+			choice = '1' if (auto) else raw_input("\n >> Choose file: ") # auto_answer -> first file in list
 			try:
 				choice = int(choice)
 				if (choice >= 1 and choice <= len(files)):
@@ -141,27 +144,28 @@ def find_gal_file(gals_dir,galaxy,ra,dec,ang_diam,freq):
 	# dir = "C:\\Users\\user\\OneDrive\\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Dwarf Spheroidal Galaxies\\Images\\" # root directory for DSph galaxy images
 	# look for directories with the name of the galaxy given
 	catch = False
+	print "\n'{0}'\n".format(gals_dir)
 	for dir_name in os.listdir(gals_dir): # iterate over all galaxy directories
 		if (catch): break
 		if (dir_name == galaxy):
 			if (verbose): print "  ** Found directory: '{0}' **  \n".format(galaxy)
-			dir = "{0}\\{1}".format(gals_dir,galaxy)
+			dir = "{0}/{1}".format(gals_dir,galaxy)
 			catch = True; break
 	if (catch == False):
 		print "\n  ** WARNING: no directory \"{0}\" found in \"{1}\"**\n  ".format(galaxy,gals_dir)
 		while True:
-			choice = str(raw_input("\n >> Make new galaxy directory \"{0}\" (y/n)?: ".format(galaxy)))
-			if ("y" in choice.lower()): # make new directory for this folder
-				os.system("mkdir \"{0}\"".format(dir+"\\"+galaxy))
+			choice = 'y' if (auto) else str(raw_input("\n >> Make new galaxy directory \"{0}\" (y/n)?: ".format(galaxy))) #auto_answer -> yes, create new galaxy directory
+			if ('y' in choice.lower()): # make new directory for this folder
+				os.system("mkdir \"{0}\"".format(dir+"/"+galaxy))
 				if (verbose): print "  ** Directory: '{0}' has been created. **".format(galaxy)
-				dir = "{0}\\{1}".format(gals_dir,galaxy)
+				dir = "{0}/{1}".format(gals_dir,galaxy)
 				catch = True; break
-			elif ("n" in choice.lower()): # don't make new directory -> ABORT
+			elif ('n' in choice.lower()): # don't make new directory -> ABORT
 				if (verbose): print "\n    -- ABORTING --   "; exit()
 	
 	
 	# look for files in galaxy directory with 'cutout' in their name
-	if (verbose): print "  ** Searching for appropriate 'GLEAM_cutout' in '.../{0}' ** ".format(dir.split("\\")[-1])
+	if (verbose): print "  ** Searching for appropriate 'GLEAM_cutout' in '.../{0}' ** ".format(dir.split("/")[-1])
 	
 	found_files = []
 	for filename in os.listdir(dir):
@@ -169,22 +173,22 @@ def find_gal_file(gals_dir,galaxy,ra,dec,ang_diam,freq):
 			found_files.append(filename)
 	if (len(found_files) == 1): # if only one appropriate file found
 		if (verbose): print "  ** Found .fits file: {0} **".format(found_files[0])
-		file = "{0}\\{1}".format(dir,found_files[0])
+		file = "{0}/{1}".format(dir,found_files[0])
 	elif (len(found_files) > 1): # if multiple appropriate files found
 		print "  ** Multiple ({0}) files found  ** ".format(len(found_files))
-		file = "{0}\\{1}".format(dir,choose(found_files))
+		file = "{0}/{1}".format(dir,choose(found_files))
 	else: # if no appropriate files found
-		print " ** WARNING: No GLEAM_cutout_.fits files found in '{0}' directory **".format(galaxy)
+		print "  ** WARNING: No GLEAM_cutout_.fits files found in '{0}' directory **".format(galaxy)
 		while True:
-			choice = str(raw_input(">> Download cutout(y/n)?: "))
-			if ("y" in choice.lower()): # download cutout
+			choice = 'y' if (auto) else str(raw_input(">> Download cutout(y/n)?: ")) # auto_answer -> yes, download cutout
+			if ('y' in choice.lower()): # download cutout
 				ra, dec, ang_diam = get_position(ra,dec,ang_diam)
 				if (verbose): print " ** Downloading GLEAM cutout for \"{0}\" using parameters: **\n    - RA: {1}\n    - DEC: {2}\n    - Angular diameter: {3}\n    - Frequency: {4} MHz".format(galaxy,ra,dec,ang_diam,freq)
 				DL_file = get_cutout(ra, dec, freq, ang_diam, download_dir=dir, listf=False)
-				file = "{0}\\GLEAM_cutout_{1}_{2}.fits".format(dir,freq,galaxy)
+				file = "{0}/GLEAM_cutout_{1}_{2}.fits".format(dir,freq,galaxy)
 				os.system("rename \"{0}\" \"GLEAM_cutout_{1}_{2}.fits\"".format(DL_file,freq,galaxy))
 				break
-			elif ("n" in choice.lower()): # don't download cutout, return None
+			elif ('n' in choice.lower()): # don't download cutout, return None
 				file = ""; break
 			else: 
 				print "\n  ** ERROR: invalid input **  "
@@ -304,11 +308,11 @@ def read_log():
 		line = file.readline()
 		while ("#EOF" not in line):
 			line = file.readline()
-			if ("last .fits file path" in line): last_fits_file = file.readline().replace('\n','')
-			elif ("last dSph galaxies directory" in line): last_gal_dir = file.readline().replace('\n','')
-			elif ("last dSph galaxy name" in line): last_gal_name = file.readline().replace('\n','')
-			elif ("last catalogue file path" in line): last_catalogue_file = file.readline().replace('\n','')
-			elif ("last AEGEAN directory" in line): last_Aegean_dir = file.readline().replace('\n','')
+			if ("last .fits file path" in line): last_fits_file = file.readline().replace('\n','').replace('\r','')
+			elif ("last dSph galaxies directory" in line): last_gal_dir = file.readline().replace('\n','').replace('\r','')
+			elif ("last dSph galaxy name" in line): last_gal_name = file.readline().replace('\n','').replace('\r','')
+			elif ("last catalogue file path" in line): last_catalogue_file = file.readline().replace('\n','').replace('\r','')
+			elif ("last AEGEAN directory" in line): last_Aegean_dir = file.readline().replace('\n','').replace('\r','')
 			
 		return [last_fits_file,last_gal_dir,last_gal_name,last_catalogue_file,last_Aegean_dir]
 		
@@ -347,13 +351,16 @@ def read_data(filename, RA, DEC, ang_diam, head): # ** Now REDUNDANT! **
 	
 	return in_data
 	
-def extract_sources(catalogue_file, in_RA, in_DEC, ang_diam, freq, dir, base):
+def extract_sources(catalogue_file, in_RA, in_DEC, Bmaj, Bmin, Bpa, ang_diam, freq, dir, base):
 	"""
 	Find sources that are positioned with the dimensions of the image specified.
 	
 	<param: catalogue_file> - path to the catalogue file
 	<param: in_RA> - right ascension of the image
 	<param: in_DEC> - declination of the image
+	<param: Bmaj> - beam major axis
+	<param: Bmin> - beam minor
+	<param: Bpa> - beam position angle
 	<param: ang_diam> - angular diameter of the image
 	<param: freq> - the central frequency of the image
 	<param: dir> - path to destination folder
@@ -363,7 +370,7 @@ def extract_sources(catalogue_file, in_RA, in_DEC, ang_diam, freq, dir, base):
 	"""
 	if (verbose): print "\n <Extracting sources> \n"
 	
-	print in_DEC
+	# calculate the position bounds
 	try:
 		RA_min = in_RA - (0.5*ang_diam*math.sqrt(2.0))/(abs(math.cos(math.radians(in_DEC))))
 		RA_max = in_RA + (0.5*ang_diam*math.sqrt(2.0))/(abs(math.cos(math.radians(in_DEC))))
@@ -372,14 +379,16 @@ def extract_sources(catalogue_file, in_RA, in_DEC, ang_diam, freq, dir, base):
 		RA_max = 360.0
 	DEC_min = in_DEC - 0.5*ang_diam*math.sqrt(2)
 	DEC_max = in_DEC + 0.5*ang_diam*math.sqrt(2)
+	#except TypeError:
+	#	print "\n ** ERROR: No RA or DEC have been specified **\n     - ABORTING -"; exit()
 	
 	RA_underflow = False; RA_overflow = False
-	if (RA_min < 0.0):
+	if (RA_min < 0.0): # i.e. RA overlaps 0h
 		RA_min_over = 360.0 + RA_min
 		RA_max_over = 360.0
 		RA_min = 0.0
 		RA_underflow = True		
-	elif (RA_max > 360.0):
+	elif (RA_max > 360.0): # i.e. RA overlaps 24h
 		RA_min_over = 0.0
 		RA_max_over = RA_max - 360.0
 		RA_max = 360.0
@@ -388,49 +397,76 @@ def extract_sources(catalogue_file, in_RA, in_DEC, ang_diam, freq, dir, base):
 		RA_min_over = 0.0
 		RA_max_over = 0.0
 	
-	# Use STILTS to produce table of sources within given position constraints.
 	#stilts_path = "C:\\Users\\user\\Documents\\TopCat\\stilts.jar"
-	#"cmd='replacecol -name  _{0} (_{0})' "
-	stilts_path = "/Users/user/rcook/bin/stilts.jar"
+	stilts_path = "/Users/rcook/bin/stilts.jar"
 	input_fmt = "fits"
 	output_fmt = "csv"
-	out_file="{0}\\GLEAM_catalogue_{1}.{2}".format(dir,base,output_fmt)
-	os.system("java -jar {1} tpipe ifmt={2} omode=out out={3} ofmt={4} "
-			"cmd='select \"(DECJ2000 > {5} && DECJ2000 < {6} && ((RAJ2000 >= {7} && RAJ2000 <= {8}) || (RAJ2000 >= {9} && RAJ2000 <= {10})))\"' "
-			"cmd='replacecol -name background background_{0} (background_{0})' "
-			"cmd='replacecol -name local_rms local_rms_{0} (local_rms_{0})' "
-			"cmd='replacecol -name ra_str ra_str (r_str)' "
-			"cmd='replacecol -name dec_str dec_str (dec_str)' "
-			"cmd='replacecol -name ra RAJ2000 (RAJ2000)' "
-			"cmd='replacecol -name err_ra err_RAJ2000 (err_RAJ2000)' "
-			"cmd='replacecol -name dec DEJ2000 (DEJ2000)' "
-			"cmd='replacecol -name err_dec err_DEJ2000 (err_DEJ2000)' "
-			"cmd='replacecol -name peak_flux peak_flux_{0} (peak_flux_{0})' "
-			"cmd='replacecol -name err_peak_flux err_peak_flux_{0} (err_peak_flux_{0})' "
-			"cmd='replacecol -name int_flux int_flux_{0} (int_flux_{0})' "
-			"cmd='replacecol -name err_int_flux err_int_flux_{0} (err_int_flux_{0})' "
-			"cmd='replacecol -name a a_{0} (a_{0})' "
-			#"cmd='replacecol -name err_a _{0} (_{0})' "
-			"cmd='replacecol -name b b_{0} (b_{0})' "
-			#"cmd='replacecol -name  err_b_{0} (_{0})' "
-			"cmd='replacecol -name pa pa_{0} (pa_{0})' "
-			#"cmd='replacecol -name err_pa _{0} (_{0})' "
-			# "cmd='replacecol -name flags _{0} (_{0})' "
-			"cmd='replacecol -name residual_mean residual_mean_{0} (residual_mean_{0})' "
-			"cmd='replacecol -name residual_std residual_std_{0} (residual_std_{0})' "
-			#"cmd='replacecol -name uuid _{0} (_{0})' "
-			"cmd='replacecol -name psf_a psf_a_{0} (psf_a_{0})' "
-			"cmd='replacecol -name psf_b psf_b_{0} (psf_b_{0})' "
-			"cmd='replacecol -name psf_pa psf_pa_{0} (psf_pa_{0})' "
-			"{11}".format(freq, stilts_path, input_fmt, out_filename, output_fmt, DEC_min, DEC_max, RA_min, RA_max, RA_min_over, RA_max_over, catalogue_file))
-			
 	
+	out_file="{0}/GLEAM_catalogue_{1}.{2}".format(dir,base,output_fmt)
+	# use stilts tpipe to extract all sources from GLEAM catalogue that fall within RA and DEC constraints + rename columns for Aegean
+	if (verbose): print "\n <Using 'stilts tpipe' to extract sources from GLEAMIDR{0}.fits>".format(IDR_version)
+	print "\njava -jar {1} tpipe ifmt={2} omode=out out=sources_temp.txt ofmt={4} ...  \"{5}\"\n".format(freq, stilts_path, input_fmt, out_file, output_fmt,catalogue_file)
+	os.system("java -jar {1} tpipe ifmt={2} omode=out out=sources_temp.txt ofmt={4} "
+			  "cmd='select \"(DEJ2000 > {5} && DEJ2000 < {6} && ((RAJ2000 >= {7} && RAJ2000 <= {8}) || (RAJ2000 >= {9} && RAJ2000 <= {10})))\"' "
+			  "cmd='replacecol -name background background_{0} (background_{0})' "
+			  "cmd='replacecol -name local_rms local_rms_{0} (local_rms_{0})' "
+			  "cmd='replacecol -name ra_str ra_str (ra_str)' "
+			  "cmd='replacecol -name dec_str dec_str (dec_str)' "
+			  "cmd='replacecol -name ra RAJ2000 (RAJ2000)' "
+			  "cmd='replacecol -name err_ra err_RAJ2000 (err_RAJ2000)' "
+			  "cmd='replacecol -name dec DEJ2000 (DEJ2000)' "
+			  "cmd='replacecol -name err_dec err_DEJ2000 (err_DEJ2000)' "
+			  "cmd='replacecol -name peak_flux peak_flux_{0} (peak_flux_{0})' "
+			  "cmd='replacecol -name err_peak_flux err_peak_flux_{0} (err_peak_flux_{0})' "
+			  "cmd='replacecol -name int_flux int_flux_{0} (int_flux_{0})' "
+			  "cmd='replacecol -name err_int_flux err_int_flux_{0} (err_int_flux_{0})' "
+			  
+			  "cmd='replacecol -name a a_{0} ((({11}/psf_a_{0})*a_{0}))' " # in arcsec
+			  #"cmd='replacecol -name a a_{0} (a_{0})' "
+			  #"cmd='replacecol -name err_a _{0} (_{0})' "
+			  
+			  "cmd='replacecol -name b b_{0} ((({12}/psf_b_{0})*b_{0}))' " # in arcsec
+			  #"cmd='replacecol -name b b_{0} (b_{0})' "
+			  #"cmd='replacecol -name  err_b_{0} (_{0})' "
+			  
+			  "cmd='replacecol -name pa pa_{0} (pa_{0})' "
+			  #"cmd='replacecol -name pa pa_{0} (pa_{0})' "
+			  #"cmd='replacecol -name err_pa _{0} (_{0})' "
+			  
+			  #"cmd='replacecol -name flags _{0} (_{0})' "
+			  "cmd='replacecol -name residual_mean residual_mean_{0} (residual_mean_{0})' "
+			  "cmd='replacecol -name residual_std residual_std_{0} (residual_std_{0})' "
+			  #"cmd='replacecol -name uuid _{0} (_{0})' "
+			  "cmd='replacecol -name psf_a psf_a_{0} (psf_a_{0})' "
+			  "cmd='replacecol -name psf_b psf_b_{0} (psf_b_{0})' "
+			  "cmd='replacecol -name psf_pa psf_pa_{0} (psf_pa_{0})' "
+			  "\"{13}\"".format(freq, stilts_path, input_fmt, out_file, output_fmt, DEC_min, DEC_max, RA_min, RA_max, RA_min_over, RA_max_over, Bmaj, Bmin, catalogue_file))
 	
-	if (RA_underflow): print "\n  ** Position bounds: \n      - RA: {0} -> {1}\n      - DEC: {2} -> {3}\n  ** Number of sources sources found: {4}".format(RA_min_over,RA_max,DEC_min,DEC_max,found_sources)
-	elif (RA_overflow): print "\n  ** Position bounds: \n      - RA: {0} -> {1}\n      - DEC: {2} -> {3}\n  ** Number of sources sources found: {4}".format(RA_min,RA_max_over,DEC_min,DEC_max,found_sources)
-	else: print "\n  ** Position bounds: \n      - RA: {0} -> {1}\n      - DEC: {2} -> {3}\n  ** Number of sources sources found: {4}".format(RA_min,RA_max,DEC_min,DEC_max,found_sources)
+	# create a table using Astropy which contains the missing columns in GLEAMIDRn.fits, i.e. island, source, err_a, err_b, err_pa, flags, uuid
+	if (verbose): print " <Creating temporary island table>"
+	#num_rows = len(Table.read("sources_temp.txt",format='csv'))
+	t = Table.read("sources_temp.txt",format='csv')
+	num_rows = len(t)
+	Table([[kk for kk in range(1,num_rows+1)]]+[[0 for kk in range(num_rows)]]*6,names=("island","source","err_a","err_b","err_pa","flags","uuid")).write("islands_temp.txt",format='csv')
+	# +[[(BMaj/t['psf_a_{0}'.format(freq)][kk])*t['a_{0}'.format(freq)][kk] for kk in range(0,num_rows)]]+[[(BMin/t['psf_b_{0}'.format(freq)][kk])*t['b_{0}'.format(freq)][kk] for kk in range(0,num_rows)]]+[[t['pa_{0}'.format(freq)][kk] for kk in range(0,num_rows)]]
 	
-	return out_filename
+	# join the GLEAM data and the false columns
+	if (verbose): print " <Joining islands table to source data table>"
+	os.system("java -jar {0} tjoin nin=2 ifmt1={1} in1=sources_temp.txt ifmt2=csv in2=islands_temp.txt ofmt=csv out=joined_temp.txt".format(stilts_path,output_fmt))
+	# output catalogue with Aegean appropriate column names and ordering
+	if (verbose): print " <Rearranging columns>"
+	os.system("java -jar {0} tpipe ifmt={1} omode=out ofmt={1} out={2} "
+			  "cmd='keepcols \"island source background local_rms ra_str dec_str ra err_ra dec err_dec peak_flux err_peak_flux int_flux err_int_flux a err_a b err_b pa err_pa flags residual_mean residual_std uuid psf_a psf_b psf_pa\"' "
+			  "joined_temp.txt".format(stilts_path,output_fmt,out_file))
+	if (verbose): print " <Deleting temporary files>"
+	os.system("rm sources_temp.txt islands_temp.txt joined_temp.txt") # remove temporary files	
+		
+	if (verbose):
+		if (RA_underflow): print "\n  ** Position bounds: \n      - RA: {0} -> {1}\n      - DEC: {2} -> {3}\n  ** Number of sources sources found: {4}".format(RA_min_over,RA_max,DEC_min,DEC_max,num_rows)
+		elif (RA_overflow): print "\n  ** Position bounds: \n      - RA: {0} -> {1}\n      - DEC: {2} -> {3}\n  ** Number of sources sources found: {4}".format(RA_min,RA_max_over,DEC_min,DEC_max,num_rows)
+		else: print "\n  ** Position bounds: \n      - RA: {0} -> {1}\n      - DEC: {2} -> {3}\n  ** Number of sources sources found: {4}".format(RA_min,RA_max,DEC_min,DEC_max,num_rows)
+		
+	return out_file
 	
 def calc_peak_flux (a,b,psf_a,psf_b,int_flux,err_int_flux):
 	"""
@@ -575,8 +611,10 @@ def run_AeRes(fits_file, catalogue_file, path, base, Aegean_path):
 	"""
 	if (verbose): print "\n <Running AeRes.py>\n"
 	
-	if (verbose): print "python \"{0}\\Aeres.py\" -c \"{1}\" -f \"{2}\" -r \"{3}\\GLEAM_residual_{4}.fits\"".format(Aegean_path,catalogue_file,fits_file,path,base)
-	os.system("python \"{0}\\Aeres.py\" -c \"{1}\" -f \"{2}\" -r \"{3}\\GLEAM_residual_{4}.fits\"".format(Aegean_path,catalogue_file,fits_file,path,base))
+	
+	
+	if (verbose): print "python \"{0}/Aeres.py\" -c \"{1}\" -f \"{2}\" -r \"{3}/GLEAM_residual_{4}.fits\"".format(Aegean_path,catalogue_file,fits_file,path,base)
+	os.system("python \"{0}/Aeres.py\" -c \"{1}\" -f \"{2}\" -r \"{3}/GLEAM_residual_{4}.fits\"".format(Aegean_path,catalogue_file,fits_file,path,base))
 	#os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalogue_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+path+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"')
 
 def run_BANE(fits_filename,Aegean_path):
@@ -617,7 +655,7 @@ def get_cutout(ra, dec, freq, size=4.0, download_dir=None, listf=False):
 		print " ** WARNING: no frequency '{0}' found **\n    Available frequencies: ".format(freq)
 		for ii in freq_ref: print "      - {0}".format(ii)
 		while True:
-			choice = str(raw_input("\n >> Choose frequency: "))
+			choice = 'wide' if (auto) else str(raw_input("\n >> Choose frequency: ")) # auto_answer -> frequency = wide
 			if (choice in freq_ref): freq_band = freq_ref[freq]; break
 			else: print "\n  ** ERROR: invalid choice **  "
 	
@@ -671,15 +709,6 @@ def main():
 	parser.add_option('-g','--galaxy',
 					  action='store', type='string', dest='galaxy_name',default=None,
 					  help="The name of the Dwarf galaxy",metavar="GALAXY_NAME")
-	parser.add_option('-q', '--quiet',
-					  action='store_false', dest='verbose', default=True,
-					  help="don't print status messages to stdout")
-	parser.add_option('-v','--verbose',
-					  action='store_true', dest='verbose',default=False,
-					  help="print status messages to stdout")
-	parser.add_option('-c','--catalogue',
-					  action='store_true', dest='catalogue',default=False,
-					  help="write to catalogue file")
 	parser.add_option('-s','--source_data',
 					  action='store', dest='data_file', default=None,
 					  help="destination of input table for source data",metavar="SOURCE_DATA")
@@ -693,33 +722,55 @@ def main():
 					  action='store', type='float', dest='DEC',default=None,
 					  help="declination of the image",metavar="DEC")
 	parser.add_option('-a','--angular_diameter',
-					  action='store', type='float', dest='ang_diameter',default=2.0,
+					  action='store', type='float', dest='ang_diameter',default=4.0,
 					  help="angular diameter of the sides of the image",metavar="ANGULAR_DIAMETER")
+	parser.add_option('-w','--wighting',
+					  action='store', type='string', dest='weighting',default=None,
+					  help="Image weighting (-2 < R < +2)",metavar="WEIGHTING")
 	parser.add_option('-b','--base',
 					  action='store', type='string', dest='base_name',default=None,
 					  help="The base name for the output Aegean formatted table")
+	parser.add_option('-q', '--quiet',
+					  action='store_false', dest='verbose', default=True,
+					  help="don't print status messages to stdout")
+	parser.add_option('-v','--verbose',
+					  action='store_true', dest='verbose',default=False,
+					  help="print status messages to stdout")
+	parser.add_option('-y','--autoanswer',
+					  action='store_true', dest='auto_answer',default=False,
+					  help="auotmatically answer all choices")
+	parser.add_option('-c','--clear_log',
+					  action='store_true', dest='clear_log',default=False,
+					  help="clear the log file")
 	
 	
 	#parser.add_option("-","--",
 	#				  action="", dest="",default=,
 	#				  help="")
 	
-	
-	
+	print "\n  ********************************************************************\n  **************** REsidual Source IDentifier (RESID) ****************\n  ********************************************************************\n\n"
+		
 	(options, args) = parser.parse_args()
 	global verbose; verbose = options.verbose
+	if (verbose == True):
+		print "  ** Verbose = True  **"
+	else:
+		print "  ** Verbose = False  **"
+	global auto; auto = options.auto_answer
+	if (verbose): print ("  ** Auto-Answer is on **  ")
 	
 	options.freq = get_frequency(options.freq)
 	if (verbose): print "\n  ** Using frequency: {0}**".format(options.freq)
 
-	# read log file, returns None(s) if no log file exists.
-	last_fits_file, last_gal_dir, last_gal_name, last_catalogue_file, last_Aegean_dir = read_log()
+	# read log file, returns empty array if no log file exists or clear_log = True.
+	if (options.clear_log == False): last_fits_file, last_gal_dir, last_gal_name, last_catalogue_file, last_Aegean_dir = read_log()
+	else: os.system("rm ReSId_log.txt")
 	
-	if(verbose):
+	if(verbose and options.clear_log != True):
 		print "\n  ** Last used files: **"
 		for kk in read_log(): print "    - {0}".format(kk) # print last usages
 	
-	Tk().withdraw() # keeps the root window from appearing
+	#Tk().withdraw() # keeps then Tkinter root window from appearing
 	
 	# if no .fits file or galaxy has been specified
 	if (options.galaxy_name == None and options.fits_file == None):
@@ -727,7 +778,8 @@ def main():
 		else: print "\n Select an option:\n  1. Select a .fits file\n  2. Download .fits file from GLEAM server\n"; num_choices = 2
 		while True:
 			try:
-				choice = int(raw_input(">>"))
+				choice = 3 if (auto) else int(raw_input(">>")) # auto_answer -> use previous file
+				# choice = '3' if auto_answer==True else int(raw_input(">>"))
 				if (choice>=1 and choice<=num_choices): break
 				else: print "  ** ERROR: input out of bounds **"
 			except ValueError:
@@ -749,9 +801,6 @@ def main():
 			os.mkdir("Downloads\\RA_{0}-DEC_{1}-FREQ_{2}-DIAM_{3}.fits".format(option.RA,options.DEC,options.freq,options.ang_diam))
 			DL_file = get_cutout(options.RA, options.DEC, options.freq, options.ang_diameter, download_dir="Downloads\\RA_{0}-DEC_{1}-FREQ_{2}-DIAM_{3}.fits".format(option.RA,options.DEC,options.freq,options.ang_diam), listf=False)
 			os.system("rename \"{0}\" \"GLEAM_cutout_{1}_{2}.fits\"".format(DL_file,freq,galaxy))
-			
-			
-				
 		
 		if (choice == 3): # set fits_file to previous file
 			fits_file = last_fits_file
@@ -762,7 +811,7 @@ def main():
 			catch = False
 			while True:
 				if (catch): break
-				choice = str(raw_input("\n>> Use this file (y/n)?:"))
+				choice = 'y' if (auto) else str(raw_input("\n>> Use this file (y/n)?:")) # auto_answer -> yes, use the previous fits_file
 				if (choice.lower() == 'y'):
 					fits_file = last_fits_file; catch = True # set fits_file to last selected 
 				elif (choice.lower() == 'n'):
@@ -774,23 +823,22 @@ def main():
 						else: print "\n  ** ERROR: invalid selection **"
 						
 		else: # last_fits_file does not exist
-			print " Select an option:\n  1. Select a .fits file\n  2. Download .fits file from GLEAM server"
+			print " Select an option:\n  1. Download .fits file from GLEAM server\n  2. Select a .fits file"
 			while True:
 				try:
-					choice = int(raw_input(">>"))
+					choice = 1 if (auto) else int(raw_input(">>"))
 					break
 				except ValueError:
 					print "  ** ERROR: Invalid input **"
 			
 			if (choice==1):
-				if (options.RA == None or options.DEC == None):
-					options.ra, options.dec, options.ang_diam = get_position(options.RA,options.DEC,options.ang_diameter)
-					if (verbose): print " ** Downloading GLEAM cutout for \"{0}\" using parameters: **\n    - RA: {1}\n    - DEC: {2}\n    - Angular diameter: {3}\n    - Frequency: {4} MHz".format(galaxy,options.RA,options.DEC,options.ang_diameter,options.freq)
-					DL_file = get_cutout(options.RA, options.DEC, options.freq, options.ang_diameter, download_dir=dir, listf=False)
-					file = "{0}\\GLEAM_cutout_{1}_{2}.fits".format(dir,freq,galaxy)
-					os.system("rename \"{0}\" \"GLEAM_cutout_{1}_{2}.fits\"".format(DL_file,freq,galaxy))
-			elif (choice==2)
-			print "  ** Select a GLEAM cutout .fits file ** "
+				if (options.RA == None or options.DEC == None): options.ra, options.dec, options.ang_diam = get_position(options.RA,options.DEC,options.ang_diameter)
+				if (verbose): print " ** Downloading GLEAM cutout for \"{0}\" using parameters: **\n    - RA: {1}\n    - DEC: {2}\n    - Angular diameter: {3}\n    - Frequency: {4} MHz".format(galaxy,options.RA,options.DEC,options.ang_diameter,options.freq)
+				DL_file = get_cutout(options.RA, options.DEC, options.freq, options.ang_diameter, download_dir=dir, listf=False)
+				file = "{0}\\GLEAM_cutout_{1}_{2}.fits".format(dir,freq,galaxy)
+				os.system("rename \"{0}\" \"GLEAM_cutout_{1}_{2}.fits\"".format(DL_file,freq,galaxy))
+			elif (choice==2):
+				print "  ** Select a GLEAM cutout .fits file ** "
 				while True:	
 					fits_file = askopenfilename().replace('/','\\') # open dialog box and return the path to the selected file
 					if (fits_file != ''): break
@@ -839,7 +887,7 @@ def main():
 			catch = False
 			while True:
 				if (catch): break
-				choice = str(raw_input("\n>> Use this file (y/n)?:"))
+				choice =  'y' if (auto) else str(raw_input("\n>> Use this file (y/n)?:"))
 				if (choice.lower() == 'y'):
 					catalogue_file = last_catalogue_file; catch = True # set catalgoue file to last used
 				elif (choice.lower() == 'n'):
@@ -856,13 +904,28 @@ def main():
 				else: print "  ** ERROR: invalid selection **"
 	
 	
-	
 	# dir = path to directory, filename = name of the file only.
-	dir, filename = '\\'.join(fits_file.split('\\')[:-1]), fits_file.split('\\')[-1]
-	if (verbose): print "\n  ** Using .fits file: '.../{0[0]}/{0[1]}/{0[2]}/{1}' ** ".format(dir.split("\\")[-3:],filename)
+	dir, filename = '/'.join(fits_file.split('/')[:-1]), fits_file.split('/')[-1]
+	print "ding ",dir.split("/")[-2:]
+	if (verbose): print "\n  ** Using .fits file: '.../{0[0]}/{0[1]}/{1}' ** ".format(dir.split("/")[-2:],filename)
 	
+	if (verbose): print "\n  ** Getting .fits file header information  **"
+	data, hdr = pyfits.getdata(fits_file,0,header=True) 
+	Bmaj = hdr['BMAJ']*(60.0**2) # Beam major axis in arcsec
+	Bmin = hdr['BMIN']*(60.0**2) # Beam minor axis in arcsec
+	Bpa = hdr['BPA'] # Beam position angle
+	# get robustness weighting
+	if (options.weighting == None):
+		Robust = hdr['ROBUST'] # Robustness of images. -1 = Briggs, 0 = Natural
+	else
+		Robust = options.weighting
+	# get RA/DEC of center pixel if not already specified
 	if (options.RA == None or options.DEC == None):
 		if (verbose): print "  ** WARNING: No RA or DEC specified -> using RA and DEC from \".../{0}\"".format(filename)
+		WCS = wcs.WCS(hdr, naxis=2)
+		middle = WCS.wcs_pix2world(hdr['naxis1']/2,hdr['naxis2']/2,1) # get coordinates of middle pixel
+		options.RA = middle[0]; options.DEC = middle[1]
+		if (verbose): print "  RA = {0}\n  DEC = {1}".format(middle[0],middle[1])
 	
 	# make a base name for output files
 	if (options.base_name == None):
@@ -874,31 +937,26 @@ def main():
 	if (last_Aegean_dir == ""):
 		last_Aegean_dir = askdirectory(initialdir="~/",title="Select directory of 'Aegean' Tools").replace('/','\\')
 		if (last_Aegean_dir == ""): print "\n  ** ERROR: AEGEAN directory was not given **\n   -- ABORTING --  "; exit() # exit if no directory given
+		else: Aegean_dir = last_Aegean_dir
+	else: Aegean_dir = last_Aegean_dir
 	
-	log(fits_file,last_gal_dir,last_gal_name,catalogue_file,last_Aegean_dir)
+	log(fits_file,last_gal_dir,last_gal_name,catalogue_file,Aegean_dir)
 	
 	# check if c_freq is RGB freq band -> in which case, need to generate table of found sources in .fits image by running Aegean
 	if ((options.freq).lower() in ["red","r","green","g","blue","b"]):
 		if (verbose): print "\n  ** Stacked frequency band: '{0}' chosen **  ".format(options.freq)
-		run_BANE(fits_file,last_Aegean_dir) # *BANE.py does not work on windows ~Paul Hancock
+		run_BANE(fits_file,Aegean_dir) # *BANE.py does not work on windows ~Paul Hancock
 		
-		wide_catalogue_file = extract_sources(catalogue_file,options.RA,options.DEC,options.ang_diameter,"wide",dir,base)
+		wide_catalogue_file = extract_sources(catalogue_file,options.RA,options.DEC,Bmaj,Bmin,Bpa,options.ang_diameter,"wide",dir,base)
 		
 		snippet_file = run_Aegean(fits_filename,wide_catalogue_file,options.RA,options.DEC,options.ang_diameter,options.freq,dir,Aegean_dir)
 		os.system("rename \"{0}\\GLEAM_snippet_{1}_{2}_{3}_{4}_comp.fits\" \"GLEAM_snippet_{1}_{2}_{3}_{4}.fits\"".format(dir,options.RA,options.DEC,options.ang_diameter,options.freq))
 		os.system("rename \"{0}\\GLEAM_snippet_{1}_{2}_{3}_{4}_comp.reg\" \"GLEAM_snippet_{1}_{2}_{3}_{4}.reg\"".format(dir,options.RA,options.DEC,options.ang_diameter,options.freq))
 	else: # user has not specified an RGB frequency band	
-		snippet_file = extract_sources(catalogue_file,options.RA,options.DEC,options.ang_diameter,options.freq,dir,base)
-		# read data from input table
-		#in_data = read_data(options.data_filename,float(options.RA),float(options.DEC),float(options.ang_diameter),dir)
-	
-	# Extract sources which are constrained by input RA/DEC and ang_diam
-		
-	# Convert source data to Aegean format table
-	# catalogue_csv_file = to_Aegean_table(source_data,options.central_freq,options.ra_map,options.dec_map,options.ang_diameter,dir)
-		
+		sources_file = extract_sources(catalogue_file,options.RA,options.DEC,Bmaj,Bmin,Bpa,options.ang_diameter,options.freq,dir,base)
+			
 	# run AeRes.py
-	run_AeRes(fits_file, snippet_file, options.central_freq, dir, base, Aegean_dir)
+	run_AeRes(fits_file, sources_file, dir, base, Aegean_dir)
 	
 	
 	

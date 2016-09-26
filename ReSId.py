@@ -25,7 +25,7 @@ from astropy.wcs import wcs
 import astropy.io.fits as pyfits
 import ntpath
 
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup
 
 from Tkinter import Tk
 from tkFileDialog import askopenfilename, askdirectory
@@ -74,8 +74,9 @@ def find_file(search_path):
 	<return: file path>
 	"""
 	
-	dir, in_filename = ntpath.split(search_path)
-	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '{0}' in .../{1[0]}/{1[1]} **".format(filename,dir.split("\\")[-2:])
+	dir = '/'.join(search_path.split('/')[:-1])
+	in_filename = search_path.split('/')[-1]
+	if (verbose): print "\n <Searching for .fits file>\n  ** Searching for '{0}' in .../{1[0]}/{1[1]} **".format(in_filename,dir.split("/")[-2:])
 
 	found_files = []
 	for filename in os.listdir(dir):
@@ -83,9 +84,9 @@ def find_file(search_path):
 			found_files.append(filename)
 	if (len(found_files) == 1): # if only one appropriate file found
 		if (verbose): print "  ** Found .fits file: {0} **".format(found_files[0])
-		file = "{0}\\{1}".format(dir,found_files[0])
+		file = "{0}/{1}".format(dir,found_files[0])
 	elif (len(found_files) > 1): # if multiple appropriate files found
-		file = "{0}\\{1}".format(dir,choose(found_files))
+		file = "{0}/{1}".format(dir,choose(found_files))
 	else:  # if no appropriate files found
 		if (verbose): print " ** \"{0}\" not found in .../{1[0]}/{1[1]} **".format(in_filename,dir.split("\\")[-2:])
 		file = ""
@@ -280,7 +281,7 @@ def log(last_fits_file,last_gal_dir,last_gal_name,last_catalogue_file,last_Aegea
 	"""
 	if (verbose): print "\n <Logging usage to \"ReSId_log.txt\">"
 	
-	log_file = open("ReSId_log.txt",'w')
+	log_file = open("/Users/rcook/Documents/Honours2016/RESID/ReSId_log.txt",'w')
 	
 	log_file.write("########################################\n## Residual Source Identifier (ReSId) ##\n########################################\n")
 
@@ -307,7 +308,7 @@ def read_log():
 	"""
 	
 	try:
-		file = open("ReSId_log.txt",'r')
+		file = open("/Users/rcook/Documents/Honours2016/RESID/ReSId_log.txt",'r')
 		line = file.readline()
 		while ("#EOF" not in line):
 			line = file.readline()
@@ -371,7 +372,7 @@ def extract_sources(catalogue_file, in_RA, in_DEC, Bmaj, Bmin, Bpa, ang_diam, fr
 	
 	<return> - the name of the catalogue file produced.
 	"""
-	if (verbose): print "\n <Extracting sources> \n"
+	if (verbose): print "\n <Extracting sources> "
 	
 	# calculate the position bounds
 	try:
@@ -407,7 +408,7 @@ def extract_sources(catalogue_file, in_RA, in_DEC, Bmaj, Bmin, Bpa, ang_diam, fr
 	
 	out_file="{0}/GLEAM_catalogue_{1}.{2}".format(dir,base,output_fmt)
 	# use stilts tpipe to extract all sources from GLEAM catalogue that fall within RA and DEC constraints + rename columns for Aegean
-	if (verbose): print "\n <Using 'stilts tpipe' to extract sources from GLEAMIDR{0}.fits>".format(IDR_version)
+	if (verbose): print "\n  ** Using 'stilts tpipe' to extract sources from GLEAMIDR{0}.fits **".format(IDR_version)
 	print "\njava -jar {1} tpipe ifmt={2} omode=out out=sources_temp.txt ofmt={4} ...  \"{5}\"\n".format(freq, stilts_path, input_fmt, out_file, output_fmt,catalogue_file)
 	os.system("java -jar {1} tpipe ifmt={2} omode=out out=sources_temp.txt ofmt={4} "
 			  "cmd='select \"(DEJ2000 > {5} && DEJ2000 < {6} && ((RAJ2000 >= {7} && RAJ2000 <= {8}) || (RAJ2000 >= {9} && RAJ2000 <= {10})))\"' "
@@ -446,7 +447,7 @@ def extract_sources(catalogue_file, in_RA, in_DEC, Bmaj, Bmin, Bpa, ang_diam, fr
 			  "\"{13}\"".format(freq, stilts_path, input_fmt, out_file, output_fmt, DEC_min, DEC_max, RA_min, RA_max, RA_min_over, RA_max_over, Bmaj, Bmin, catalogue_file))
 	
 	# create a table using Astropy which contains the missing columns in GLEAMIDRn.fits, i.e. island, source, err_a, err_b, err_pa, flags, uuid
-	if (verbose): print " <Creating temporary island table>"
+	if (verbose): print "  ** Creating temporary island table **"
 	#num_rows = len(Table.read("sources_temp.txt",format='csv'))
 	t = Table.read("sources_temp.txt",format='csv')
 	num_rows = len(t)
@@ -454,14 +455,14 @@ def extract_sources(catalogue_file, in_RA, in_DEC, Bmaj, Bmin, Bpa, ang_diam, fr
 	# +[[(BMaj/t['psf_a_{0}'.format(freq)][kk])*t['a_{0}'.format(freq)][kk] for kk in range(0,num_rows)]]+[[(BMin/t['psf_b_{0}'.format(freq)][kk])*t['b_{0}'.format(freq)][kk] for kk in range(0,num_rows)]]+[[t['pa_{0}'.format(freq)][kk] for kk in range(0,num_rows)]]
 	
 	# join the GLEAM data and the false columns
-	if (verbose): print " <Joining islands table to source data table>"
+	if (verbose): print "  ** Joining islands table to source data table **"
 	os.system("java -jar {0} tjoin nin=2 ifmt1={1} in1=sources_temp.txt ifmt2=csv in2=islands_temp.txt ofmt=csv out=joined_temp.txt".format(stilts_path,output_fmt))
 	# output catalogue with Aegean appropriate column names and ordering
-	if (verbose): print " <Rearranging columns>"
+	if (verbose): print "  ** Rearranging columns **"
 	os.system("java -jar {0} tpipe ifmt={1} omode=out ofmt={1} out={2} "
 			  "cmd='keepcols \"island source background local_rms ra_str dec_str ra err_ra dec err_dec peak_flux err_peak_flux int_flux err_int_flux a err_a b err_b pa err_pa flags residual_mean residual_std uuid psf_a psf_b psf_pa\"' "
 			  "joined_temp.txt".format(stilts_path,output_fmt,out_file))
-	if (verbose): print " <Deleting temporary files>"
+	if (verbose): print "  ** Deleting temporary files **"
 	os.system("rm sources_temp.txt islands_temp.txt joined_temp.txt") # remove temporary files	
 		
 	if (verbose):
@@ -596,7 +597,7 @@ def run_Aegean(fits_name, wide_catalogue_file, ra, dec, ang_diam, freq, path, Ae
 	
 	out_filename = "GLEAM_catalogue_{0}_{1}_{2}_{3}".format(ra,dec,ang_diam,freq)
 	input_filename = wide_catalogue_file.replace(".fits","")
-	if (verbose): print "python \"{0}\\Aegean.py\" --input=\"{1}\" --priorized=1  --table=\"{2}\\{3}.fits\",\"{2}\\{3}.reg\" --telescope=MWA \"{4}\" ".format(Aegean_path,wide_catalogue_file,path,out_filename,fits_name)
+	if (verbose): print "python \"{0}\\Aegean.py\" --input=\"{1}\" --priorized=1  --table=\"{2}\\{3}.fits\",\"{2}\\{3}.reg\" --telescope=MWA \"{4}\" \n".format(Aegean_path,wide_catalogue_file,path,out_filename,fits_name)
 	os.system("python \"{0}\\Aegean.py\" --input=\"{1}\" --priorized=1  --table=\"{2}\\{3}.fits\",\"{2}\\{3}.reg\" --telescope=MWA \"{4}\" ".format(Aegean_path,wide_catalogue_file,path,out_filename,fits_name))
 	#os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\Aegean.py'+'"' + ' --input='+'"'+input_table_name+'"' + ' --priorized=1' + ' --table='+'"'+head+"\\"+out_filename+'.fits'+'","'+head+"\\"+out_filename+'.reg'+'"' + ' --telescope=MWA ' + '"'+input_fits_name+'"')
 	
@@ -616,7 +617,7 @@ def run_AeRes(fits_file, catalogue_file, path, base, Aegean_path):
 	
 	
 	
-	if (verbose): print "python \"{0}/Aeres.py\" -c \"{1}\" -f \"{2}\" -r \"{3}/GLEAM_residual_{4}.fits\"".format(Aegean_path,catalogue_file,fits_file,path,base)
+	if (verbose): print "python \"{0}/Aeres.py\" -c \"{1}\" -f \"{2}\" -r \"{3}/GLEAM_residual_{4}.fits\"\n".format(Aegean_path,catalogue_file,fits_file,path,base)
 	os.system("python \"{0}/Aeres.py\" -c \"{1}\" -f \"{2}\" -r \"{3}/GLEAM_residual_{4}.fits\"".format(Aegean_path,catalogue_file,fits_file,path,base))
 	#os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\AeRes.py'+'"' + ' -c ' + '"'+catalogue_filename+'"' + ' -f ' + '"'+fits_filename+'"' + ' -r ' + '"'+path+'\\GLEAM_residual_'+c_freq+'_'+base+'.fits"')
 
@@ -631,7 +632,7 @@ def run_BANE(fits_filename,Aegean_path):
 	"""
 	if (verbose): print "\n <Running BANE.py>"
 	
-	print "python \"{0}\\BANE.py\" \"{1}\"".format(Aegean_path,fits_filename)
+	print "python \"{0}\\BANE.py\" \"{1}\"\n".format(Aegean_path,fits_filename)
 	os.system("python \"{0}\\BANE.py\" \"{1}\"".format(Aegean_path,fits_filename))
 	#os.system('python ' + '"'+'C:\\Users\\user\\OneDrive\Documents\\Uni\\2016 - Semester 1\\Physics Dissertation\\Aegean\\Aegean-master\\BANE.py'+'"' + ' ' + '"'+fits_file+'"')
 	
@@ -706,45 +707,59 @@ def get_cutout(ra, dec, freq, size=4.0, download_dir=None, listf=False):
 def main():
 	usage = "usage: %prog [options] "
 	parser = OptionParser(usage=usage)
-	parser.add_option('-n', '--fits_file', 
+	# define options groups
+	input_group = OptionGroup(parser, "Input File(s) Options")
+	param_group = OptionGroup(parser, "Image Parameter Options")
+	debug_group = OptionGroup(parser, "Debug Options")
+	misc_group =  OptionGroup(parser, "Miscellaneous Options")
+	
+	# add options
+	input_group.add_option('-n', '--fits_file', 
 					  action='store',type='string',dest='fits_file',default=None,
 					  help=".fits file path", metavar="FITS_FILE")
-	parser.add_option('-g','--galaxy',
+	input_group.add_option('-g','--galaxy',
 					  action='store', type='string', dest='galaxy_name',default=None,
 					  help="The name of the Dwarf galaxy",metavar="GALAXY_NAME")
-	parser.add_option('-s','--source_data',
+	input_group.add_option('-s','--source_data',
 					  action='store', dest='data_file', default=None,
 					  help="destination of input table for source data",metavar="SOURCE_DATA")
-	parser.add_option('-f', '--freq', 
+	param_group.add_option('-f', '--freq', 
 					  action='store',type='string',dest='freq', default="wide",
 					  help="provide central frequency (MHz)", metavar="FREQUENCY")
-	parser.add_option('-r','--ra',
+	param_group.add_option('-r','--ra',
 					  action='store', type='float', dest='RA',default=None,
 					  help="right ascension of the image",metavar="RA")
-	parser.add_option('-d','--dec',
+	param_group.add_option('-d','--dec',
 					  action='store', type='float', dest='DEC',default=None,
 					  help="declination of the image",metavar="DEC")
-	parser.add_option('-a','--angular_diameter',
+	param_group.add_option('-a','--angular_diameter',
 					  action='store', type='float', dest='ang_diameter',default=4.0,
 					  help="angular diameter of the sides of the image",metavar="ANGULAR_DIAMETER")
-	parser.add_option('-w','--weighting',
+	param_group.add_option('-w','--weighting',
 					  action='store', type='string', dest='weighting',default=None,
 					  help="Image weighting (-2 < R < +2)",metavar="WEIGHTING")
-	parser.add_option('-b','--base',
+	debug_group.add_option('-b','--base',
 					  action='store', type='string', dest='base_name',default=None,
 					  help="The base name for the output Aegean formatted table")
-	parser.add_option('-q', '--quiet',
+	debug_group.add_option('-q', '--quiet',
 					  action='store_false', dest='verbose', default=True,
 					  help="don't print status messages to stdout")
-	parser.add_option('-v','--verbose',
+	debug_group.add_option('-v','--verbose',
 					  action='store_true', dest='verbose',default=False,
 					  help="print status messages to stdout")
-	parser.add_option('-y','--autoanswer',
+	misc_group.add_option('-y','--autoanswer',
 					  action='store_true', dest='auto_answer',default=False,
-					  help="auotmatically answer all choices")
-	parser.add_option('-c','--clear_log',
+					  help="automatically answer all user prompts")
+	misc_group.add_option('-c','--clear_log',
 					  action='store_true', dest='clear_log',default=False,
 					  help="clear the log file")
+					  
+	# Group options:
+	parser.add_option_group(input_group)
+	parser.add_option_group(param_group)
+	parser.add_option_group(debug_group)
+	parser.add_option_group(misc_group)
+
 	
 	
 	#parser.add_option("-","--",
@@ -767,7 +782,7 @@ def main():
 
 	# read log file, returns empty array if no log file exists or clear_log = True.
 	if (options.clear_log == False): last_fits_file, last_gal_dir, last_gal_name, last_catalogue_file, last_Aegean_dir = read_log()
-	else: os.system("rm ReSId_log.txt")
+	else: os.system("rm /Users/rcook/Documents/Honours2016/RESID/ReSId_log.txt")
 	
 	if(verbose and options.clear_log != True):
 		# print last usages
@@ -777,22 +792,24 @@ def main():
 	
 	#Tk().withdraw() # keeps then Tkinter root window from appearing
 	
-	# if no .fits file or galaxy has been specified
+#########################################################################################################################################################
+# if no .fits file or galaxy has been specified
+#########################################################################################################################################################
 	if (options.galaxy_name == None and options.fits_file == None):
 		if (last_fits_file != ''): print "\n Select an option:\n  1. Select a .fits file\n  2. Download .fits file from GLEAM server\n  3. Use previous .fits file: \"{0}\"".format(last_fits_file); num_choices = 3
 		else: print "\n Select an option:\n  1. Select a .fits file\n  2. Download .fits file from GLEAM server\n"; num_choices = 2
 		while True:
 			try:
-				choice = 3 if (auto) else int(raw_input(">>")) # auto_answer -> use previous file
-				# choice = '3' if auto_answer==True else int(raw_input(">>"))
+				choice = int(raw_input(">>")) # no auto_answer, as no specification has been made
 				if (choice>=1 and choice<=num_choices): break
 				else: print "  ** ERROR: input out of bounds **"
 			except ValueError:
 				print "  ** ERROR: Invalid input **"
 	
 		if (choice == 1): # set fits_file to selected file
+			if (verbose): print "  ** Selecting .fits file from directory **"
 			while True:
-				fits_file = askopenfilename(initialdir='\\'.join(last_fits_file.split('/')[0:-1])).replace('/','\\') # open dialog box and return the path to the selected file
+				fits_file = askopenfilename(initialdir='/'.join(last_fits_file.split('/')[0:-1])) # open dialog box and return the path to the selected file
 				# AutoDownload option required
 				if (fits_file != ''): break
 				else: print "\n  ** ERROR: invalid selection **"
@@ -804,56 +821,23 @@ def main():
 			
 			os.mkdir("Downloads\\RA_{0}-DEC_{1}-FREQ_{2}-DIAM_{3}.fits".format(option.RA,options.DEC,options.freq,options.ang_diam))
 			DL_file = get_cutout(options.RA, options.DEC, options.freq, options.ang_diameter, download_dir="Downloads\\RA_{0}-DEC_{1}-FREQ_{2}-DIAM_{3}.fits".format(option.RA,options.DEC,options.freq,options.ang_diam), listf=False)
-			os.system("rename \"{0}\" \"GLEAM_cutout_{1}_{2}.fits\"".format(DL_file,freq,galaxy))
+			os.system("rename \"{0}\" \"GLEAM_cutout_{1}_{2}_{3}_{4}.fits\"".format(DL_file,options.RA,options.DEC,options.ang_diameter,options.freq))
+			fits_file = "{0}/GLEAM_cutout_{1}_{2}_{3}_{4}.fits".format('/'.join(DL_file.split('/')[:-1]),options.RA,options.DEC,options.ang_diameter,options.freq)
 		
 		if (choice == 3): # set fits_file to previous file
+			if (verbose): print "  ** Using previous .fits file ** "
 			fits_file = last_fits_file
-	
-	if (options.galaxy_name == None and options.fits_file == None): # *** Neither a 'fits_file', nor a 'galaxy_name' have been given
-		if (last_fits_file != ''): # last_fits_file does exist
-			print "\n ** WARNING: No .fits file specified **\n  previous .fits file used:\n \"{0}\"".format(last_fits_file)
-			catch = False
-			while True:
-				if (catch): break
-				choice = 'y' if (auto) else str(raw_input("\n>> Use this file (y/n)?:")) # auto_answer -> yes, use the previous fits_file
-				if (choice.lower() == 'y'):
-					fits_file = last_fits_file; catch = True # set fits_file to last selected 
-				elif (choice.lower() == 'n'):
-					print "  ** Select a GLEAM cutout .fits file ** "
-					while True:
-						fits_file = askopenfilename(initialdir='\\'.join(last_fits_file.split('/')[0:-1])).replace('/','\\') # open dialog box and return the path to the selected file
-						# AutoDownload option required
-						if (fits_file != ''): catch = True; break
-						else: print "\n  ** ERROR: invalid selection **"
-						
-		else: # last_fits_file does not exist
-			print " Select an option:\n  1. Download .fits file from GLEAM server\n  2. Select a .fits file"
-			while True:
-				try:
-					choice = 1 if (auto) else int(raw_input(">>"))
-					break
-				except ValueError:
-					print "  ** ERROR: Invalid input **"
-			
-			if (choice==1):
-				if (options.RA == None or options.DEC == None): options.ra, options.dec, options.ang_diam = get_position(options.RA,options.DEC,options.ang_diameter)
-				if (verbose): print " ** Downloading GLEAM cutout for \"{0}\" using parameters: **\n    - RA: {1}\n    - DEC: {2}\n    - Angular diameter: {3}\n    - Frequency: {4} MHz".format(galaxy,options.RA,options.DEC,options.ang_diameter,options.freq)
-				DL_file = get_cutout(options.RA, options.DEC, options.freq, options.ang_diameter, download_dir=dir, listf=False)
-				file = "{0}\\GLEAM_cutout_{1}_{2}.fits".format(dir,freq,galaxy)
-				os.system("rename \"{0}\" \"GLEAM_cutout_{1}_{2}.fits\"".format(DL_file,freq,galaxy))
-			elif (choice==2):
-				print "  ** Select a GLEAM cutout .fits file ** "
-				while True:	
-					fits_file = askopenfilename().replace('/','\\') # open dialog box and return the path to the selected file
-					if (fits_file != ''): break
-					else: print "\n  ** ERROR: invalid selection **"
-		
-	# if both galaxy and .fits filename specified -> keep galaxy
+
+#########################################################################################################################################################	
+# if both galaxy and .fits filename specified -> keep galaxy / void .fits file
+#########################################################################################################################################################
 	if (options.fits_file != None and options.galaxy_name != None): # *** 'fits_file' and 'galaxy_name' have been given.
 		print "\n ** WARNING: '--fits_file' and '--galaxy' have been specified -> using '--galaxy' only **"
 		options.fits_file = None
-	
-	# when galaxy name has been specified
+		
+#########################################################################################################################################################
+# If galaxy name has been specified
+#########################################################################################################################################################
 	if (options.galaxy_name != None):
 		last_gal_name = options.galaxy_name
 		if (last_gal_dir != ""): # look in previous galaxy directory
@@ -871,18 +855,22 @@ def main():
 			fits_file = askopenfilename().replace('/','\\') # open dialog box and return the path to the selected file
 			last_gal_dir = '\\'.join(fits_file.split('\\')[0:-2]) # update latest last_gal_dir
 			last_gal_name = fits_file.split('\\')[-2]
-	
-	# if .fits filename has been specified
+			
+#########################################################################################################################################################	
+# if .fits filename has been specified
+#########################################################################################################################################################
 	if (options.fits_file != None):
-		fits_file = find_file(options.fits_filename)
+		fits_file = find_file(options.fits_file)
 		if (fits_file == ""):
 			print "  ** WARNING: No .fits file was found for \"{0}\" **\n  ** Select a GLEAM cutout .fits file ** ".format(options.fits_file)
 			while True:
-				fits_file = askopenfilename().replace('/','\\') # open dialog box and return the path to the selected file
+				fits_file = askopenfilename() # open dialog box and return the path to the selected file
 				if (fits_file != ""): break
 				else: print "\n  ** ERROR: invalid selection **"
-	
-	# specifying catalogue filename
+				
+#########################################################################################################################################################
+# specifying catalogue filename
+#########################################################################################################################################################
 	if (options.data_file != None): # if catalogue has been specified
 		catalogue_file = options.data_file
 	else: # if no catalogue has been specified
@@ -897,13 +885,13 @@ def main():
 				elif (choice.lower() == 'n'):
 					print "  ** Select the input file for source data **  "
 					while True:
-						catalogue_file = askopenfilename(initialdir='\\'.join(last_catalogue_file.split('/')[0:-1])).replace('/','\\')
+						catalogue_file = askopenfilename(initialdir='/'.join(last_catalogue_file.split('/')[0:-1]))#.replace('/','\\')
 						if (catalogue_file != ""): catch = True; break
 						else: print "  ** ERROR: invalid selection **"
 		else:
 			print "  ** Select the input file for source data **  "
 			while True:
-				catalogue_file = askopenfilename().replace('/','\\')
+				catalogue_file = askopenfilename()#.replace('/','\\')
 				if (catalogue_file != ""): break
 				else: print "  ** ERROR: invalid selection **"
 	
@@ -931,10 +919,9 @@ def main():
 		if (verbose): print "  RA = {0}\n  DEC = {1}".format(middle[0],middle[1])
 	
 	# make a base name for output files
-	if (options.base_name == None):
-		base = filename.replace(".fits","").replace("GLEAM_","").replace("Gleam_","").replace("cutout_","") if (options.galaxy_name==None) else "{0}_{1}".format(options.freq,options.galaxy_name)
-	else:
-		base = options.base_name
+	base = filename.replace(".fits","").replace("GLEAM_","").replace("Gleam_","").replace("cutout_","") if (options.galaxy_name==None) else "{0}_{1}".format(options.freq,options.galaxy_name)
+	if (robust == '0'): base = base + "_R0" 
+	if (options.base_name != None): base = base + "_" + options.base_name
 	
 	# check for last Aegean directory
 	if (last_Aegean_dir == ""):
